@@ -1,5 +1,7 @@
 {
-  "public": true,
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "installCommand": "echo 'No install needed'",
   "rewrites": [
     {
       "source": "/(.*)",
