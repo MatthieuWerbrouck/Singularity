@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Singularity - Gestion de Vie Personnelle</title>
+    <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <nav class="navbar">
+                <h1>🌟 Singularity</h1>
+                <div class="nav-links">
+                    <button id="loginBtn" class="btn btn-primary">Connexion</button>
+                    <button id="logoutBtn" class="btn btn-secondary" style="display: none;">Déconnexion</button>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Page de connexion -->
+            <div id="loginPage" class="page">
+                <div class="login-container">
+                    <h2>Bienvenue dans Singularity</h2>
+                    <p>Votre assistant personnel pour organiser votre vie</p>
+                    
+                    <form id="loginForm" class="auth-form">
+                        <input type="email" id="email" placeholder="Email" required>
+                        <input type="password" id="password" placeholder="Mot de passe" required>
+                        <button type="submit" class="btn btn-primary">Se connecter</button>
+                    </form>
+                    
+                    <p>Pas encore de compte ? 
+                        <button id="switchToRegister" class="btn-link">S'inscrire</button>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Page d'inscription -->
+            <div id="registerPage" class="page" style="display: none;">
+                <div class="login-container">
+                    <h2>Créer un compte</h2>
+                    
+                    <form id="registerForm" class="auth-form">
+                        <input type="email" id="registerEmail" placeholder="Email" required>
+                        <input type="password" id="registerPassword" placeholder="Mot de passe" required>
+                        <button type="submit" class="btn btn-primary">S'inscrire</button>
+                    </form>
+                    
+                    <p>Déjà un compte ? 
+                        <button id="switchToLogin" class="btn-link">Se connecter</button>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Dashboard principal -->
+            <div id="dashboardPage" class="page" style="display: none;">
+                <div class="dashboard-container">
+                    <h2>Tableau de bord</h2>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3>📊 Vue d'ensemble</h3>
+                            <p>Statistiques générales</p>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>💰 Finances</h3>
+                            <p>Suivi des revenus et dépenses</p>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>✅ Tâches</h3>
+                            <p>Gestion des tâches quotidiennes</p>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>🎯 Objectifs</h3>
+                            <p>Suivi des objectifs personnels</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Singularity - Gestion de Vie Personnelle</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="./js/config.js"></script>
+    <script type="module" src="./js/auth.js"></script>
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>
