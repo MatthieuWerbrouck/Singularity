@@ -1,8 +1,8 @@
 // Configuration Supabase
 // ⚠️ IMPORTANT: Remplacez ces valeurs par vos vraies clés Supabase
 export const SUPABASE_CONFIG = {
-    url: 'YOUR_SUPABASE_URL', // À remplacer par votre URL Supabase
-    anonKey: 'YOUR_SUPABASE_ANON_KEY' // À remplacer par votre clé anonyme Supabase
+    url: 'https://fgnpwzlwwldneuvzsvjr.supabase.co', // À remplacer par votre URL Supabase
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnbnB3emx3d2xkbmV1dnpzdmpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzE3ODMsImV4cCI6MjA3NTQwNzc4M30.ha_zLj8jPD5MSuYb3ncdjvOeOdmjmx0uSuzYvMLYByg' // À remplacer par votre clé anonyme Supabase
 };
 
 // Configuration de l'application
