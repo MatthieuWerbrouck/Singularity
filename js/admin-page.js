@@ -119,10 +119,22 @@ class AdminApp {
             // Afficher les infos utilisateur
             document.getElementById('currentUserEmail').textContent = authManager.user.email;
 
-            // Vérifier les permissions admin
+            // Vérifier les permissions admin avec logs détaillés
+            console.log('🔍 Vérification des permissions admin...');
+            console.log('👤 Utilisateur:', authManager.user);
+            
             const hasAdminAccess = await authManager.hasAdminAccess();
+            console.log('🎯 Résultat hasAdminAccess:', hasAdminAccess);
+            
+            // Debug supplémentaire - charger le profil manuellement
+            const profile = await authManager.getUserProfile();
+            console.log('👤 Profil complet:', profile);
+            console.log('👑 is_super_admin:', profile?.is_super_admin);
+            console.log('🏷️ Rôle:', profile?.roles);
+            
             if (!hasAdminAccess) {
                 console.log('❌ Pas de permissions admin');
+                showToast('Accès refusé: Permissions administrateur requises', 'error');
                 this.showAccessError();
                 return;
             }
@@ -190,11 +202,35 @@ class AdminApp {
 // Export pour utilisation
 export { AdminApp };
 
-// Auto-initialisation si on est sur la page admin
+    // Fonction de debug pour tester les permissions manuellement
+    window.debugAdminAccess = async () => {
+        console.log('🔧 Debug permissions admin...');
+        console.log('👤 Utilisateur:', authManager?.user);
+        
+        if (authManager) {
+            try {
+                const hasAccess = await authManager.hasAdminAccess();
+                const profile = await authManager.getUserProfile();
+                
+                console.log('🎯 hasAdminAccess:', hasAccess);
+                console.log('👤 Profil:', profile);
+                console.log('👑 is_super_admin:', profile?.is_super_admin);
+                console.log('🏷️ Rôle level:', profile?.roles?.level);
+                console.log('🏷️ Rôle name:', profile?.roles?.name);
+                
+                return { hasAccess, profile };
+            } catch (error) {
+                console.error('❌ Erreur debug:', error);
+                return { error };
+            }
+        } else {
+            console.log('❌ authManager non disponible');
+        }
+    };
+
+    // Auto-initialisation si on est sur la page admin
 if (window.location.pathname.includes('admin.html')) {
-    const adminApp = new AdminApp();
-    
-    // Gestion des événements
+    const adminApp = new AdminApp();    // Gestion des événements
     document.addEventListener('DOMContentLoaded', () => {
         // Initialiser l'app
         adminApp.init();
