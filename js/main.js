@@ -1,6 +1,7 @@
 import { initSupabase, authManager } from './auth.js';
-import { APP_CONFIG, SUPABASE_CONFIG } from './config.js';
+import { APP_CONFIG, SUPABASE_CONFIG, MODULES } from './config.js';
 import { AdminManager } from './admin.js';
+import { TuyaLightManager } from './lights.js';
 
 // Vérification des accès administrateur
 async function checkAdminAccess() {
@@ -232,12 +233,18 @@ async function setupDashboard() {
         console.log('❌ Pas d\'accès admin');
     }
     
+    // Initialiser le module lumières si activé
+    if (MODULES.lights?.enabled) {
+        console.log('💡 Initialisation du module lumières');
+        await initLightsModule();
+    }
+    
     dashboardCards.forEach(card => {
         card.addEventListener('click', () => {
             const title = card.querySelector('h3').textContent;
             
             // Gestion des autres modules (admin est géré directement dans addAdminCard)
-            if (!title.includes('Administration')) {
+            if (!title.includes('Administration') && !title.includes('Lumières')) {
                 console.log('🎯 Clic sur autre module:', title);
                 showMessage(`Module "${title}" - À développer prochainement`, 'info');
             }
@@ -474,6 +481,321 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
     console.error('Promise rejetée:', event.reason);
 });
+
+// === GESTION DU MODULE LUMIÈRES ===
+
+let lightManager = null;
+
+async function initLightsModule() {
+    try {
+        console.log('💡 Initialisation du gestionnaire de lumières Tuya...');
+        
+        // Créer l'instance du gestionnaire
+        lightManager = new TuyaLightManager();
+        
+        // Mettre à jour le statut
+        updateLightsStatus('connecting', 'Connexion à Tuya...');
+        
+        // Tenter la connexion
+        await lightManager.authenticate();
+        console.log('✅ Authentification Tuya réussie');
+        
+        // Charger les appareils
+        await lightManager.getDevices();
+        console.log(`💡 ${lightManager.devices.length} appareil(s) trouvé(s)`);
+        
+        // Mettre à jour l'interface
+        updateLightsInterface();
+        
+        showToast(`${lightManager.devices.length} lumière(s) connectée(s)`, 'success');
+        
+    } catch (error) {
+        console.error('❌ Erreur initialisation lumières:', error);
+        updateLightsStatus('disconnected', 'Échec de connexion');
+        showLightsError(error.message);
+        showToast('Impossible de se connecter aux lumières Tuya', 'error');
+    }
+}
+
+function updateLightsStatus(status, message) {
+    const statusElement = document.getElementById('lightsStatus');
+    const statusIndicator = statusElement?.querySelector('.status-indicator');
+    const statusText = statusElement?.querySelector('.status-text');
+    
+    if (statusElement && statusIndicator && statusText) {
+        statusElement.className = `connection-status ${status}`;
+        
+        const indicators = {
+            connecting: '🔄',
+            connected: '✅', 
+            disconnected: '❌'
+        };
+        
+        statusIndicator.textContent = indicators[status] || '❓';
+        statusText.textContent = message;
+    }
+}
+
+function updateLightsInterface() {
+    const lightsContent = document.getElementById('lightsContent');
+    const lightsControls = document.getElementById('lightsControls');
+    
+    if (!lightManager || !lightsContent) return;
+    
+    // Masquer le loading
+    lightsContent.innerHTML = '';
+    
+    if (lightManager.devices.length === 0) {
+        lightsContent.innerHTML = `
+            <div class="lights-empty">
+                <div class="lights-empty-icon">💡</div>
+                <p>Aucune lumière trouvée</p>
+                <small>Vérifiez que vos appareils Tuya Smart sont connectés</small>
+            </div>
+        `;
+        updateLightsStatus('connected', '0 appareil trouvé');
+        return;
+    }
+    
+    // Afficher les appareils
+    updateLightsStatus('connected', `${lightManager.devices.length} appareil(s)`);
+    
+    if (lightsControls) {
+        lightsControls.style.display = 'block';
+        lightsControls.innerHTML = '';
+        
+        lightManager.devices.forEach(device => {
+            const deviceElement = createLightDeviceElement(device);
+            lightsControls.appendChild(deviceElement);
+        });
+    }
+}
+
+function createLightDeviceElement(device) {
+    const deviceDiv = document.createElement('div');
+    deviceDiv.className = 'light-device';
+    deviceDiv.setAttribute('data-device-id', device.id);
+    
+    // Déterminer si l'appareil est allumé (simulé pour l'instant)
+    const isOn = Math.random() > 0.5; // Simulation - à remplacer par le vrai statut
+    const brightness = Math.floor(Math.random() * 100) + 1; // Simulation
+    
+    deviceDiv.innerHTML = `
+        <div class="light-header">
+            <div class="light-info">
+                <div class="light-icon">💡</div>
+                <div>
+                    <h4 class="light-name">${device.name || 'Lumière Sans Nom'}</h4>
+                    <p class="light-status">${isOn ? `Allumée • ${brightness}%` : 'Éteinte'}</p>
+                </div>
+            </div>
+            <button class="light-toggle ${isOn ? 'active' : ''}" 
+                    onclick="toggleLight('${device.id}')" 
+                    title="${isOn ? 'Éteindre' : 'Allumer'}">
+            </button>
+        </div>
+        
+        <div class="light-controls">
+            <div class="control-group">
+                <label class="control-label">Luminosité</label>
+                <div class="brightness-control">
+                    <input type="range" 
+                           class="brightness-slider" 
+                           min="1" 
+                           max="100" 
+                           value="${brightness}"
+                           oninput="setBrightness('${device.id}', this.value)">
+                    <span class="brightness-value">${brightness}%</span>
+                </div>
+            </div>
+            
+            <!-- Contrôles avancés si supportés -->
+            ${device.category === 'dj' ? `
+                <div class="color-controls">
+                    <div class="control-group">
+                        <label class="control-label">Couleur</label>
+                        <input type="color" 
+                               class="color-picker" 
+                               value="#ffffff"
+                               onchange="setColor('${device.id}', this.value)">
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Température</label>
+                        <input type="range" 
+                               class="temp-slider" 
+                               min="0" 
+                               max="100" 
+                               value="50"
+                               oninput="setColorTemp('${device.id}', this.value)">
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+    
+    if (isOn) {
+        deviceDiv.classList.add('active');
+    }
+    
+    return deviceDiv;
+}
+
+function showLightsError(message) {
+    const lightsContent = document.getElementById('lightsContent');
+    if (lightsContent) {
+        lightsContent.innerHTML = `
+            <div class="lights-error">
+                ❌ ${message}
+                <br>
+                <button onclick="retryLightsConnection()" style="margin-top: 10px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    🔄 Réessayer
+                </button>
+            </div>
+        `;
+    }
+}
+
+// === CONTRÔLES DES LUMIÈRES ===
+
+async function toggleLight(deviceId) {
+    if (!lightManager) return;
+    
+    try {
+        const device = lightManager.getDeviceById(deviceId);
+        const deviceElement = document.querySelector(`[data-device-id="${deviceId}"]`);
+        const toggle = deviceElement?.querySelector('.light-toggle');
+        const statusElement = deviceElement?.querySelector('.light-status');
+        
+        if (!device || !toggle) return;
+        
+        const isCurrentlyOn = toggle.classList.contains('active');
+        
+        // Désactiver le bouton temporairement
+        toggle.style.opacity = '0.5';
+        toggle.style.pointerEvents = 'none';
+        
+        if (isCurrentlyOn) {
+            await lightManager.turnOff(deviceId);
+            toggle.classList.remove('active');
+            deviceElement.classList.remove('active');
+            if (statusElement) statusElement.textContent = 'Éteinte';
+            showToast(`${device.name} éteinte`, 'info');
+        } else {
+            await lightManager.turnOn(deviceId);
+            toggle.classList.add('active');
+            deviceElement.classList.add('active');
+            if (statusElement) statusElement.textContent = 'Allumée';
+            showToast(`${device.name} allumée`, 'success');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erreur toggle light:', error);
+        showToast('Erreur de contrôle de la lumière', 'error');
+    } finally {
+        // Réactiver le bouton
+        const deviceElement = document.querySelector(`[data-device-id="${deviceId}"]`);
+        const toggle = deviceElement?.querySelector('.light-toggle');
+        if (toggle) {
+            toggle.style.opacity = '1';
+            toggle.style.pointerEvents = 'auto';
+        }
+    }
+}
+
+async function setBrightness(deviceId, brightness) {
+    if (!lightManager) return;
+    
+    try {
+        const tuyaBrightness = lightManager.percentToTuyaBrightness(parseInt(brightness));
+        await lightManager.setBrightness(deviceId, tuyaBrightness);
+        
+        // Mettre à jour l'affichage
+        const deviceElement = document.querySelector(`[data-device-id="${deviceId}"]`);
+        const brightnesValue = deviceElement?.querySelector('.brightness-value');
+        if (brightnesValue) {
+            brightnesValue.textContent = `${brightness}%`;
+        }
+        
+        const device = lightManager.getDeviceById(deviceId);
+        console.log(`💡 ${device?.name} luminosité: ${brightness}%`);
+        
+    } catch (error) {
+        console.error('❌ Erreur setBrightness:', error);
+        showToast('Erreur de réglage de luminosité', 'error');
+    }
+}
+
+async function setColor(deviceId, color) {
+    if (!lightManager) return;
+    
+    try {
+        // Convertir hex vers HSV pour Tuya
+        const hsv = hexToHsv(color);
+        await lightManager.setColor(deviceId, hsv.h, hsv.s * 10, hsv.v * 10); // Tuya utilise 0-1000 pour s et v
+        
+        const device = lightManager.getDeviceById(deviceId);
+        console.log(`🎨 ${device?.name} couleur: ${color}`);
+        
+    } catch (error) {
+        console.error('❌ Erreur setColor:', error);
+        showToast('Erreur de changement de couleur', 'error');
+    }
+}
+
+async function setColorTemp(deviceId, temp) {
+    if (!lightManager) return;
+    
+    try {
+        const tuyaTemp = lightManager.percentToTuyaColorTemp(parseInt(temp));
+        await lightManager.setColorTemp(deviceId, tuyaTemp);
+        
+        const device = lightManager.getDeviceById(deviceId);
+        console.log(`🌡️ ${device?.name} température: ${temp}%`);
+        
+    } catch (error) {
+        console.error('❌ Erreur setColorTemp:', error);
+        showToast('Erreur de réglage température', 'error');
+    }
+}
+
+async function retryLightsConnection() {
+    await initLightsModule();
+}
+
+// === UTILITAIRES ===
+
+function hexToHsv(hex) {
+    // Convertir hex vers RGB
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    
+    // Convertir RGB vers HSV
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    
+    let h = 0;
+    if (diff !== 0) {
+        if (max === r) h = ((g - b) / diff) % 6;
+        else if (max === g) h = (b - r) / diff + 2;
+        else h = (r - g) / diff + 4;
+    }
+    h = Math.round(h * 60);
+    if (h < 0) h += 360;
+    
+    const s = max === 0 ? 0 : diff / max;
+    const v = max;
+    
+    return { h, s, v };
+}
+
+// Exposer les fonctions globalement pour les événements onclick
+window.toggleLight = toggleLight;
+window.setBrightness = setBrightness;
+window.setColor = setColor;
+window.setColorTemp = setColorTemp;
+window.retryLightsConnection = retryLightsConnection;
 
 // Écouter les changements d'authentification pour mettre à jour le dashboard
 window.addEventListener('userAuthenticated', () => {
