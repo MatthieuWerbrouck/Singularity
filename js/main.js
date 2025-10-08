@@ -165,32 +165,6 @@ async function setupDashboard() {
     });
 }
 
-// Vérification des droits administrateur
-async function checkAdminAccess() {
-    console.log('🔐 checkAdminAccess - Début');
-    
-    if (!authManager.isAuthenticated()) {
-        console.log('❌ Utilisateur non connecté');
-        return false;
-    }
-    
-    // Accès temporaire pour l'utilisateur demo
-    if (authManager.user?.email === 'demo@singularity.app') {
-        console.log('🎯 Accès demo accordé temporairement');
-        return true;
-    }
-    
-    try {
-        console.log('🔍 Appel hasAdminAccess...');
-        const hasAccess = await authManager.hasAdminAccess();
-        console.log('🎯 Résultat hasAdminAccess:', hasAccess);
-        return hasAccess;
-    } catch (error) {
-        console.log('❌ Vérification admin échouée:', error);
-        return false;
-    }
-}
-
 // Ajouter la carte d'administration au dashboard
 function addAdminCard() {
     const dashboardGrid = document.querySelector('.dashboard-grid');
