@@ -119,27 +119,14 @@ class AdminApp {
             // Afficher les infos utilisateur
             document.getElementById('currentUserEmail').textContent = authManager.user.email;
 
-            // Vérifier les permissions admin avec logs détaillés
-            console.log('🔍 Vérification des permissions admin...');
-            console.log('👤 Utilisateur:', authManager.user);
-            
+            // Vérifier les permissions admin
             const hasAdminAccess = await authManager.hasAdminAccess();
-            console.log('🎯 Résultat hasAdminAccess:', hasAdminAccess);
-            
-            // Debug supplémentaire - charger le profil manuellement
-            const profile = await authManager.getUserProfile();
-            console.log('👤 Profil complet:', profile);
-            console.log('👑 is_super_admin:', profile?.is_super_admin);
-            console.log('🏷️ Rôle:', profile?.roles);
             
             if (!hasAdminAccess) {
-                console.log('❌ Pas de permissions admin');
                 showToast('Accès refusé: Permissions administrateur requises', 'error');
                 this.showAccessError();
                 return;
             }
-            
-            console.log('✅ Permissions admin confirmées - Chargement du panel...');
 
             // Initialiser le panel admin
             await this.initAdminPanel();
@@ -152,54 +139,28 @@ class AdminApp {
     }
 
     async initAdminPanel() {
-        console.log('🔧 Initialisation du panel admin...');
-
         try {
-            console.log('📦 Création de AdminManager...');
+            // Créer et initialiser AdminManager
             this.adminManager = new AdminManager();
-            
-            console.log('🚀 Initialisation de AdminManager...');
             await this.adminManager.init();
-            console.log('✅ AdminManager initialisé avec succès');
 
-            // Vérifier que le contenu a bien été injecté par AdminManager
-            const adminContent = document.getElementById('adminContent');
+            // Vérifier que le contenu a bien été injecté
             const adminContainer = document.getElementById('adminContainer');
-            
-            console.log('🔍 Après création AdminManager:');
-            console.log('  - adminContent:', !!adminContent);
-            console.log('  - adminContainer:', !!adminContainer);
-            
-            if (adminContainer) {
-                console.log('✅ AdminContainer créé avec succès');
-                console.log('📏 Contenu adminContainer:', adminContainer.innerHTML.length, 'caractères');
-            } else {
-                console.error('❌ AdminContainer non créé par AdminManager');
+            if (!adminContainer) {
                 throw new Error('AdminContainer non créé - problème d\'injection');
             }
 
             // Masquer le loading et afficher le contenu
-            console.log('🎭 Mise à jour de l\'affichage...');
             const loadingElement = document.getElementById('loadingState');
             const contentElement = document.getElementById('adminContent');
             
-            if (loadingElement) {
-                loadingElement.style.display = 'none';
-                console.log('✅ Loading masqué');
-            }
-            
-            if (contentElement) {
-                contentElement.style.display = 'block';
-                console.log('✅ Contenu affiché');
-                console.log('📏 Contenu final:', contentElement.innerHTML.length, 'caractères');
-            }
+            if (loadingElement) loadingElement.style.display = 'none';
+            if (contentElement) contentElement.style.display = 'block';
 
             showToast('Panel d\'administration chargé avec succès', 'success');
-            console.log('🎉 Panel admin complètement initialisé !');
 
         } catch (error) {
             console.error('❌ Erreur panel admin:', error);
-            console.error('📚 Stack trace:', error.stack);
             showToast('Erreur lors du chargement du panel: ' + error.message, 'error');
             this.showAccessError();
         }
