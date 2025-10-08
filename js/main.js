@@ -271,15 +271,132 @@ function addAdminCard() {
 
 // Initialisation du module administration
 async function initAdminModule() {
+    console.log('🚀 Initialisation du module admin...');
+    
     try {
+        // Vérifier si Supabase est configuré
+        const supabaseConfigured = APP_CONFIG.supabase && 
+                                 APP_CONFIG.supabase.url !== 'YOUR_SUPABASE_URL';
+        
+        if (!supabaseConfigured) {
+            // Mode démo - créer un panel admin simplifié
+            console.log('📝 Mode démo - Panel admin simplifié');
+            createDemoAdminPanel();
+            showToast('Panel d\'administration (mode démo)', 'info');
+            return;
+        }
+
+        // Mode production avec Supabase
+        console.log('🔧 Mode production - Panel admin complet');
         const adminManager = new AdminManager();
         await adminManager.init();
-        showMessage('👑 Panel d\'administration chargé', 'success');
+        showToast('Panel d\'administration chargé', 'success');
+        
     } catch (error) {
-        console.error('Erreur initialisation admin:', error);
-        showMessage(error.message || 'Erreur lors du chargement du panel d\'administration', 'error');
+        console.error('❌ Erreur initialisation admin:', error);
+        showToast(error.message || 'Erreur lors du chargement du panel d\'administration', 'error');
+        
+        // Fallback vers le panel démo
+        console.log('🔄 Fallback vers le panel démo');
+        createDemoAdminPanel();
     }
 }
+
+// Panel d'administration en mode démo
+function createDemoAdminPanel() {
+    // Trouver ou créer le container admin
+    let container = document.getElementById('adminContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'adminContainer';
+        const dashboardPage = document.getElementById('dashboardPage');
+        if (dashboardPage) {
+            dashboardPage.appendChild(container);
+        }
+    }
+
+    container.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 12px; margin: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <!-- Header Admin -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9;">
+                <h2 style="color: #1e293b; margin: 0; display: flex; align-items: center; gap: 10px;">
+                    👑 Panel d'Administration (Démo)
+                </h2>
+                <div style="background: #fbbf24; color: #92400e; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">
+                    🎭 MODE DÉMO
+                </div>
+            </div>
+
+            <!-- Message d'information -->
+            <div style="background: #fef3c7; border: 1px solid #fbbf24; color: #92400e; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                <h3 style="margin: 0 0 8px 0; font-size: 16px;">⚠️ Configuration requise</h3>
+                <p style="margin: 0; font-size: 14px; line-height: 1.4;">
+                    Pour accéder au panel d'administration complet, veuillez configurer Supabase dans le fichier <code>config.js</code>.
+                    <br><br>
+                    <strong>Fonctionnalités disponibles en mode démo :</strong>
+                </p>
+            </div>
+
+            <!-- Fonctionnalités démo -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <!-- Statistiques fictives -->
+                <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 20px; border-radius: 8px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px;">📊 Statistiques (Simulées)</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px;">
+                        <div><strong>Utilisateurs:</strong> 25</div>
+                        <div><strong>Actifs:</strong> 18</div>
+                        <div><strong>Admins:</strong> 3</div>
+                        <div><strong>Rôles:</strong> 5</div>
+                    </div>
+                </div>
+
+                <!-- Actions disponibles -->
+                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #1e293b;">🛠️ Actions Disponibles</h3>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button onclick="showDemoFeature('users')" style="background: #3b82f6; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            👥 Gestion des utilisateurs
+                        </button>
+                        <button onclick="showDemoFeature('roles')" style="background: #10b981; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🏷️ Gestion des rôles  
+                        </button>
+                        <button onclick="showDemoFeature('permissions')" style="background: #f59e0b; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🔐 Gestion des permissions
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Configuration -->
+                <div style="background: #fee2e2; padding: 20px; border-radius: 8px; border: 1px solid #fca5a5;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 16px; color: #991b1b;">⚙️ Configuration</h3>
+                    <p style="margin: 0 0 12px 0; font-size: 14px; color: #7f1d1d;">
+                        Pour activer le panel complet :
+                    </p>
+                    <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #7f1d1d;">
+                        <li>Créez un projet Supabase</li>
+                        <li>Configurez les tables (users, roles, etc.)</li>
+                        <li>Ajoutez vos clés dans config.js</li>
+                        <li>Redémarrez l'application</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Fonction pour les fonctionnalités démo
+function showDemoFeature(feature) {
+    const features = {
+        'users': 'Gestion des utilisateurs',
+        'roles': 'Gestion des rôles',  
+        'permissions': 'Gestion des permissions'
+    };
+    
+    showToast(`${features[feature]} - Disponible avec Supabase configuré`, 'info');
+}
+
+// Exposer globalement pour les boutons onclick
+window.showDemoFeature = showDemoFeature;
 
 // Mode demo (quand Supabase n'est pas configuré)
 function enableDemoMode() {
