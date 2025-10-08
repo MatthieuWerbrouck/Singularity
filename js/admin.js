@@ -174,19 +174,25 @@ class AdminManager {
         return `
             <div id="usersContent" class="admin-tab-content">
                 <!-- Filtres -->
-                <div style="display: flex; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
-                    <select id="statusFilter" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; align-items: center;">
+                    <select id="statusFilter" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; min-width: 120px;">
                         <option value="">Tous les statuts</option>
                         <option value="active">Actif</option>
                         <option value="inactive">Inactif</option>
                         <option value="suspended">Suspendu</option>
                     </select>
-                    <select id="roleFilter" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                    <select id="roleFilter" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; min-width: 140px;">
                         <option value="">Tous les rôles</option>
                         ${this.roles.map(role => `<option value="${role.id}">${role.display_name}</option>`).join('')}
                     </select>
-                    <input type="text" id="searchUsers" placeholder="Rechercher par email..." 
+                    <input type="text" id="searchUsers" placeholder="Rechercher par email ou nom..." 
                            style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                    <button id="clearFiltersBtn" style="background: #6b7280; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">
+                        🗑️ Effacer
+                    </button>
+                    <div id="filterResults" style="color: #6b7280; font-size: 12px; white-space: nowrap;">
+                        ${this.users.length} utilisateur(s)
+                    </div>
                 </div>
 
                 <!-- Table des Utilisateurs -->
@@ -282,6 +288,7 @@ class AdminManager {
         document.getElementById('statusFilter')?.addEventListener('change', () => this.filterUsers());
         document.getElementById('roleFilter')?.addEventListener('change', () => this.filterUsers());
         document.getElementById('searchUsers')?.addEventListener('input', () => this.filterUsers());
+        document.getElementById('clearFiltersBtn')?.addEventListener('click', () => this.clearFilters());
 
         // Rendre adminManager accessible globalement pour les boutons onclick
         window.adminManager = this;
@@ -335,8 +342,87 @@ class AdminManager {
     }
 
     filterUsers() {
-        // TODO: Implémenter le filtrage
-        console.log('Filtrage des utilisateurs...');
+        const statusFilter = document.getElementById('statusFilter')?.value || '';
+        const roleFilter = document.getElementById('roleFilter')?.value || '';
+        const searchText = document.getElementById('searchUsers')?.value.toLowerCase() || '';
+        
+        console.log('Filtrage:', { statusFilter, roleFilter, searchText });
+        
+        // Filtrer les utilisateurs
+        let filteredUsers = this.users;
+        
+        // Filtre par statut
+        if (statusFilter) {
+            filteredUsers = filteredUsers.filter(user => user.status === statusFilter);
+        }
+        
+        // Filtre par rôle
+        if (roleFilter) {
+            filteredUsers = filteredUsers.filter(user => user.roles?.id == roleFilter);
+        }
+        
+        // Filtre par recherche texte (email ou nom)
+        if (searchText) {
+            filteredUsers = filteredUsers.filter(user => 
+                user.email.toLowerCase().includes(searchText) ||
+                (user.full_name && user.full_name.toLowerCase().includes(searchText))
+            );
+        }
+        
+        console.log(`Filtrage: ${filteredUsers.length}/${this.users.length} utilisateurs`);
+        
+        // Mettre à jour l'affichage
+        this.updateUsersTable(filteredUsers);
+        
+        // Mettre à jour le compteur de résultats
+        const resultsDiv = document.getElementById('filterResults');
+        if (resultsDiv) {
+            resultsDiv.textContent = `${filteredUsers.length} sur ${this.users.length} utilisateur(s)`;
+        }
+        
+        // Notification du résultat du filtrage
+        if (filteredUsers.length === 0 && this.users.length > 0) {
+            this.showMessage('Aucun utilisateur ne correspond aux critères de filtrage', 'warning');
+        }
+    }
+    
+    clearFilters() {
+        // Réinitialiser tous les filtres
+        const statusFilter = document.getElementById('statusFilter');
+        const roleFilter = document.getElementById('roleFilter');
+        const searchInput = document.getElementById('searchUsers');
+        
+        if (statusFilter) statusFilter.value = '';
+        if (roleFilter) roleFilter.value = '';
+        if (searchInput) searchInput.value = '';
+        
+        // Réafficher tous les utilisateurs
+        this.updateUsersTable(this.users);
+        
+        // Mettre à jour le compteur
+        const resultsDiv = document.getElementById('filterResults');
+        if (resultsDiv) {
+            resultsDiv.textContent = `${this.users.length} utilisateur(s)`;
+        }
+        
+        this.showMessage('Filtres effacés', 'info');
+    }
+    
+    updateUsersTable(users) {
+        const tableBody = document.getElementById('usersTableBody');
+        if (!tableBody) return;
+        
+        if (users.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: #6b7280; font-style: italic;">
+                        🔍 Aucun utilisateur trouvé
+                    </td>
+                </tr>
+            `;
+        } else {
+            tableBody.innerHTML = users.map(user => this.renderUserRow(user)).join('');
+        }
     }
 
     showAddUserModal() {
