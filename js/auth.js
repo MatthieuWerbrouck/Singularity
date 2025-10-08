@@ -143,14 +143,22 @@ export class AuthManager {
 
     // Vérifier si l'utilisateur a accès à l'administration
     async hasAdminAccess() {
+        // Bypass temporaire pour debug - remplacer par votre email
+        if (this.user?.email === 'matthieu@werbrouck.ch') {
+            console.log('🚨 Bypass temporaire pour matthieu@werbrouck.ch');
+            return true;
+        }
+        
         const profile = await this.getUserProfile();
         
         if (!profile) {
+            console.log('❌ Pas de profil trouvé');
             return false;
         }
         
         // Vérifier is_super_admin
         if (profile.is_super_admin) {
+            console.log('✅ Accès via is_super_admin');
             return true;
         }
         
