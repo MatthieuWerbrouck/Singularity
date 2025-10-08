@@ -94,14 +94,28 @@ class AdminManager {
     }
 
     createAdminInterface() {
-        // Trouver ou créer le container admin
+        // Déterminer où injecter le contenu admin
         let container = document.getElementById('adminContainer');
         if (!container) {
             container = document.createElement('div');
             container.id = 'adminContainer';
+            
+            // Essayer d'abord la page dashboard (index.html)
             const dashboardPage = document.getElementById('dashboardPage');
             if (dashboardPage) {
                 dashboardPage.appendChild(container);
+                console.log('📍 Container admin injecté dans dashboardPage');
+            } else {
+                // Sinon, utiliser adminContent (admin.html)
+                const adminContent = document.getElementById('adminContent');
+                if (adminContent) {
+                    adminContent.appendChild(container);
+                    console.log('📍 Container admin injecté dans adminContent');
+                } else {
+                    // Fallback vers body
+                    document.body.appendChild(container);
+                    console.log('📍 Container admin injecté dans body (fallback)');
+                }
             }
         }
 

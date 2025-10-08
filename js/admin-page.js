@@ -162,22 +162,20 @@ class AdminApp {
             await this.adminManager.init();
             console.log('✅ AdminManager initialisé avec succès');
 
-            // Vérifier les éléments DOM
+            // Vérifier que le contenu a bien été injecté par AdminManager
             const adminContent = document.getElementById('adminContent');
             const adminContainer = document.getElementById('adminContainer');
             
-            console.log('🔍 Éléments DOM trouvés:');
+            console.log('🔍 Après création AdminManager:');
             console.log('  - adminContent:', !!adminContent);
             console.log('  - adminContainer:', !!adminContainer);
             
             if (adminContainer) {
-                console.log('📋 Injection du contenu HTML...');
-                console.log('  - Contenu adminContainer:', adminContainer.innerHTML.length, 'caractères');
-                adminContent.innerHTML = adminContainer.innerHTML;
-                adminContainer.remove();
-                console.log('✅ Contenu injecté et container supprimé');
+                console.log('✅ AdminContainer créé avec succès');
+                console.log('📏 Contenu adminContainer:', adminContainer.innerHTML.length, 'caractères');
             } else {
-                console.warn('⚠️ adminContainer non trouvé - le contenu pourrait ne pas s\'afficher');
+                console.error('❌ AdminContainer non créé par AdminManager');
+                throw new Error('AdminContainer non créé - problème d\'injection');
             }
 
             // Masquer le loading et afficher le contenu
