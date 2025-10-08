@@ -131,8 +131,18 @@ async function setupDashboard() {
     
     // Vérifier si l'utilisateur est admin pour ajouter le module admin
     console.log('🔍 Vérification accès admin...');
+    console.log('👤 Utilisateur actuel:', authManager.user);
+    
     const isAdmin = await checkAdminAccess();
     console.log('👑 Accès admin:', isAdmin);
+    
+    // Debug supplémentaire
+    if (authManager.user) {
+        const profile = await authManager.getUserProfile();
+        console.log('👤 Profil complet:', profile);
+        console.log('🏷️ Is super admin?', profile?.is_super_admin);
+        console.log('🎭 Rôle:', profile?.roles);
+    }
     
     if (isAdmin) {
         console.log('✅ Ajout carte admin');
