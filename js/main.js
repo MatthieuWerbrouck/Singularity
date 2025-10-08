@@ -233,8 +233,11 @@ async function setupDashboard() {
             
             // Gestion spécifique pour le module admin
             if (title.includes('Administration')) {
+                console.log('🎯 Clic sur le bouton Administration détecté');
+                console.log('🎯 Titre de la carte:', title);
                 initAdminModule();
             } else {
+                console.log('🎯 Clic sur autre module:', title);
                 showMessage(`Module "${title}" - À développer prochainement`, 'info');
             }
         });
