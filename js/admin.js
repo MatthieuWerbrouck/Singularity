@@ -294,6 +294,7 @@ class AdminManager {
         // Event listeners pour les boutons
         document.getElementById('refreshUsersBtn')?.addEventListener('click', () => this.refreshData());
         document.getElementById('addUserBtn')?.addEventListener('click', () => this.showAddUserModal());
+        document.getElementById('addRoleBtn')?.addEventListener('click', () => this.showAddRoleModal());
 
         // Filtres
         document.getElementById('statusFilter')?.addEventListener('change', () => this.filterUsers());
@@ -324,9 +325,16 @@ class AdminManager {
         switch (tabName) {
             case 'users':
                 content.innerHTML = this.renderUsersTab();
+                // Re-setup event listeners pour les filtres
+                document.getElementById('statusFilter')?.addEventListener('change', () => this.filterUsers());
+                document.getElementById('roleFilter')?.addEventListener('change', () => this.filterUsers());
+                document.getElementById('searchUsers')?.addEventListener('input', () => this.filterUsers());
+                document.getElementById('clearFiltersBtn')?.addEventListener('click', () => this.clearFilters());
                 break;
             case 'roles':
                 content.innerHTML = this.renderRolesTab();
+                // Re-setup event listener pour le bouton ajouter rôle
+                document.getElementById('addRoleBtn')?.addEventListener('click', () => this.showAddRoleModal());
                 break;
             case 'permissions':
                 content.innerHTML = this.renderPermissionsTab();
@@ -335,9 +343,192 @@ class AdminManager {
     }
 
     renderRolesTab() {
-        return `<div style="padding: 20px; text-align: center; color: #64748b;">
-            🚧 Gestion des rôles - En développement
-        </div>`;
+        return `
+            <div id="rolesContent" class="admin-tab-content">
+                <!-- Header avec actions -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border-radius: 12px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 24px;">🏷️ Gestion des Rôles</h3>
+                        <p style="margin: 5px 0 0 0; opacity: 0.9;">Configurez les rôles et leurs niveaux de permissions</p>
+                    </div>
+                    <button id="addRoleBtn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; backdrop-filter: blur(10px);">
+                        ➕ Nouveau Rôle
+                    </button>
+                </div>
+
+                <!-- Statistiques des rôles -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                    <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 700; color: #1e293b;">${this.roles.length}</div>
+                        <div style="color: #64748b; font-size: 14px;">Rôles Définis</div>
+                    </div>
+                    <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 700; color: #1e293b;">${this.roles.filter(r => r.level >= 80).length}</div>
+                        <div style="color: #64748b; font-size: 14px;">Rôles Admin</div>
+                    </div>
+                    <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 700; color: #1e293b;">${this.users.filter(u => u.roles).length}</div>
+                        <div style="color: #64748b; font-size: 14px;">Utilisateurs avec Rôles</div>
+                    </div>
+                    <div style="background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 700; color: #1e293b;">${this.roles.filter(r => r.is_active).length}</div>
+                        <div style="color: #64748b; font-size: 14px;">Rôles Actifs</div>
+                    </div>
+                </div>
+
+                <!-- Hiérarchie des rôles -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                    <h4 style="margin: 0 0 20px 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                        � Hiérarchie des Rôles
+                        <span style="font-size: 12px; background: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 12px; font-weight: 400;">Organisés par niveau</span>
+                    </h4>
+                    <div id="rolesHierarchy">
+                        ${this.renderRolesHierarchy()}
+                    </div>
+                </div>
+
+                <!-- Table détaillée des rôles -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                    <div style="background: #f8fafc; padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                        <h4 style="margin: 0; color: #1e293b;">📋 Configuration Détaillée</h4>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8fafc;">
+                                    <th style="padding: 15px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Rôle</th>
+                                    <th style="padding: 15px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Niveau</th>
+                                    <th style="padding: 15px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Utilisateurs</th>
+                                    <th style="padding: 15px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Statut</th>
+                                    <th style="padding: 15px; text-align: center; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rolesTableBody">
+                                ${this.roles.map(role => this.renderRoleRow(role)).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderRolesHierarchy() {
+        // Trier les rôles par niveau décroissant
+        const sortedRoles = [...this.roles].sort((a, b) => b.level - a.level);
+        
+        return sortedRoles.map(role => {
+            const userCount = this.users.filter(u => u.roles?.id === role.id).length;
+            const widthPercent = (role.level / 100) * 100;
+            
+            return `
+                <div style="display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                    <!-- Indicateur de niveau -->
+                    <div style="width: 200px; background: #f1f5f9; border-radius: 20px; overflow: hidden; position: relative;">
+                        <div style="background: ${role.color}; width: ${widthPercent}%; height: 8px; border-radius: 20px; transition: all 0.3s ease;"></div>
+                        <div style="position: absolute; top: -2px; right: 5px; font-size: 10px; font-weight: 600; color: #64748b;">
+                            ${role.level}/100
+                        </div>
+                    </div>
+                    
+                    <!-- Informations du rôle -->
+                    <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 20px;">${role.icon}</span>
+                        <div>
+                            <div style="font-weight: 600; color: ${role.color};">${role.display_name}</div>
+                            <div style="font-size: 12px; color: #64748b;">${role.name} • ${userCount} utilisateur${userCount !== 1 ? 's' : ''}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Badge de niveau -->
+                    <div style="background: ${role.color}20; color: ${role.color}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                        ${this.getRoleLevelLabel(role.level)}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    getRoleLevelLabel(level) {
+        if (level >= 90) return '👑 Super Admin';
+        if (level >= 80) return '🔥 Administrateur';
+        if (level >= 60) return '⚡ Modérateur';
+        if (level >= 40) return '🎯 Manager';
+        if (level >= 20) return '✨ Contributeur';
+        return '👤 Utilisateur';
+    }
+
+    renderRoleRow(role) {
+        const userCount = this.users.filter(u => u.roles?.id === role.id).length;
+        const canDelete = userCount === 0 && !['super_admin', 'admin', 'user'].includes(role.name);
+        
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s ease;" 
+                onmouseover="this.style.background='#f8fafc'" 
+                onmouseout="this.style.background='white'">
+                
+                <td style="padding: 15px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; background: ${role.color}20; border: 2px solid ${role.color}40; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                            ${role.icon}
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 2px;">${role.display_name}</div>
+                            <div style="font-size: 12px; color: #64748b; font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                                ${role.name}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                
+                <td style="padding: 15px; text-align: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                        <span style="font-weight: 700; font-size: 18px; color: ${role.color};">${role.level}</span>
+                        <div style="width: 60px; background: #f1f5f9; border-radius: 10px; overflow: hidden;">
+                            <div style="background: ${role.color}; width: ${role.level}%; height: 4px;"></div>
+                        </div>
+                    </div>
+                </td>
+                
+                <td style="padding: 15px; text-align: center;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                        <span style="font-weight: 600; color: #1e293b;">${userCount}</span>
+                        <span style="font-size: 11px; color: #64748b;">utilisateur${userCount !== 1 ? 's' : ''}</span>
+                    </div>
+                </td>
+                
+                <td style="padding: 15px; text-align: center;">
+                    <span style="background: ${role.is_active ? '#10b981' : '#6b7280'}20; color: ${role.is_active ? '#10b981' : '#6b7280'}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                        ${role.is_active ? '✅ Actif' : '⏸️ Inactif'}
+                    </span>
+                </td>
+                
+                <td style="padding: 15px; text-align: center;">
+                    <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="window.adminManager.editRole('${role.id}')" 
+                                style="background: #3b82f6; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                            ✏️ Éditer
+                        </button>
+                        
+                        <button onclick="window.adminManager.toggleRoleStatus('${role.id}', ${role.is_active})" 
+                                style="background: ${role.is_active ? '#f59e0b' : '#10b981'}; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                            ${role.is_active ? '⏸️ Désactiver' : '▶️ Activer'}
+                        </button>
+                        
+                        ${canDelete ? `
+                            <button onclick="window.adminManager.deleteRole('${role.id}')" 
+                                    style="background: #ef4444; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                                🗑️ Supprimer
+                            </button>
+                        ` : `
+                            <span style="color: #6b7280; font-size: 11px; font-style: italic; padding: 6px;">
+                                ${userCount > 0 ? 'En cours d\'utilisation' : 'Rôle système'}
+                            </span>
+                        `}
+                    </div>
+                </td>
+            </tr>
+        `;
     }
 
     renderPermissionsTab() {
@@ -417,6 +608,321 @@ class AdminManager {
         }
         
         this.showMessage('Filtres effacés', 'info');
+    }
+
+    // === GESTION DES RÔLES ===
+
+    showAddRoleModal() {
+        this.createModal('addRole', 'Créer un nouveau rôle', this.renderAddRoleForm(), {
+            primaryButton: {
+                text: 'Créer le rôle',
+                action: () => this.createRole()
+            },
+            secondaryButton: {
+                text: 'Annuler',
+                action: () => this.hideModal()
+            }
+        });
+    }
+
+    renderAddRoleForm() {
+        return `
+            <form id="addRoleForm">
+                <div class="form-group">
+                    <label class="form-label" for="roleName">Nom technique du rôle *</label>
+                    <input type="text" id="roleName" class="form-input" placeholder="ex: moderator" required pattern="[a-z_]+" title="Lettres minuscules et underscores uniquement">
+                    <small style="color: #6b7280; font-size: 12px;">Utilisé en interne, doit être unique (lettres minuscules et _ uniquement)</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="roleDisplayName">Nom d'affichage *</label>
+                    <input type="text" id="roleDisplayName" class="form-input" placeholder="ex: Modérateur" required>
+                    <small style="color: #6b7280; font-size: 12px;">Nom affiché dans l'interface utilisateur</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="roleDescription">Description</label>
+                    <textarea id="roleDescription" class="form-input" placeholder="Description des responsabilités de ce rôle..." rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="roleLevel">Niveau de permission *</label>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <input type="range" id="roleLevel" min="1" max="89" value="20" style="flex: 1;" oninput="updateLevelDisplay()">
+                        <div style="min-width: 80px; text-align: center; font-weight: 600; color: #3b82f6;">
+                            <span id="levelValue">20</span>/100
+                        </div>
+                    </div>
+                    <div id="levelDescription" style="margin-top: 8px; padding: 8px 12px; background: #f1f5f9; border-radius: 6px; font-size: 12px; color: #64748b;">
+                        👤 Utilisateur standard
+                    </div>
+                    <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
+                        ⚠️ Niveau 90+ réservé aux super admins. Maximum recommandé : 89
+                    </small>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label class="form-label" for="roleColor">Couleur du rôle *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="roleColor" value="#3b82f6" style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
+                            <input type="text" id="roleColorText" class="form-input" value="#3b82f6" placeholder="#3b82f6" pattern="^#[0-9A-Fa-f]{6}$" style="flex: 1;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="roleIcon">Icône du rôle *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div id="iconPreview" style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                                👤
+                            </div>
+                            <input type="text" id="roleIcon" class="form-input" value="👤" placeholder="👤" maxlength="2" style="flex: 1;">
+                        </div>
+                        <small style="color: #6b7280; font-size: 12px;">Utilisez un emoji ou un caractère Unicode</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="roleIsActive" checked>
+                        <label for="roleIsActive">Rôle actif</label>
+                    </div>
+                    <small style="color: #6b7280; font-size: 12px;">Les rôles inactifs ne peuvent pas être assignés aux utilisateurs</small>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 14px;">🎯 Aperçu du rôle</h4>
+                    <div id="rolePreview" style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; background: #3b82f620; border: 2px solid #3b82f640; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                            👤
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: #3b82f6;">Nouvel utilisateur</div>
+                            <div style="font-size: 12px; color: #64748b;">new_user • Niveau 20/100</div>
+                        </div>
+                        <div style="background: #3b82f620; color: #3b82f6; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                            👤 Utilisateur
+                        </div>
+                    </div>
+                </div>
+            </form>
+        `;
+    }
+
+    async createRole() {
+        const form = document.getElementById('addRoleForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = {
+            name: document.getElementById('roleName').value,
+            displayName: document.getElementById('roleDisplayName').value,
+            description: document.getElementById('roleDescription').value,
+            level: parseInt(document.getElementById('roleLevel').value),
+            color: document.getElementById('roleColor').value,
+            icon: document.getElementById('roleIcon').value,
+            isActive: document.getElementById('roleIsActive').checked
+        };
+
+        console.log('Création rôle:', formData);
+
+        try {
+            // Désactiver le bouton pendant la création
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Création en cours...';
+            }
+
+            // Vérifier si le nom du rôle existe déjà
+            const { data: existingRole } = await this.supabase
+                .from('roles')
+                .select('name')
+                .eq('name', formData.name)
+                .single();
+
+            if (existingRole) {
+                throw new Error('Un rôle avec ce nom existe déjà');
+            }
+
+            // Créer le rôle
+            const { data, error } = await this.supabase
+                .from('roles')
+                .insert({
+                    name: formData.name,
+                    display_name: formData.displayName,
+                    description: formData.description,
+                    level: formData.level,
+                    color: formData.color,
+                    icon: formData.icon,
+                    is_active: formData.isActive,
+                    created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Actualiser les données
+            await this.refreshData();
+
+            // Fermer modal et afficher succès
+            this.hideModal();
+            this.showSuccess(`Rôle "${formData.displayName}" créé avec succès !`);
+
+        } catch (error) {
+            console.error('Erreur création rôle:', error);
+            this.showError(`Erreur lors de la création : ${error.message}`);
+
+            // Réactiver le bouton
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Créer le rôle';
+            }
+        }
+    }
+
+    async editRole(roleId) {
+        const role = this.roles.find(r => r.id === roleId);
+        if (!role) {
+            this.showError('Rôle non trouvé');
+            return;
+        }
+
+        console.log('Édition rôle:', role);
+        this.showEditRoleModal(role);
+    }
+
+    async toggleRoleStatus(roleId, currentStatus) {
+        const role = this.roles.find(r => r.id === roleId);
+        if (!role) {
+            this.showError('Rôle non trouvé');
+            return;
+        }
+
+        // Vérifier si c'est un rôle système
+        if (['super_admin', 'admin', 'user'].includes(role.name)) {
+            this.showWarning('Les rôles système ne peuvent pas être désactivés');
+            return;
+        }
+
+        const newStatus = !currentStatus;
+
+        try {
+            const { error } = await this.supabase
+                .from('roles')
+                .update({ is_active: newStatus })
+                .eq('id', roleId);
+
+            if (error) throw error;
+
+            await this.refreshData();
+            this.showSuccess(`Rôle ${newStatus ? 'activé' : 'désactivé'} avec succès`);
+        } catch (error) {
+            console.error('Erreur changement statut rôle:', error);
+            this.showError('Erreur lors du changement de statut');
+        }
+    }
+
+    async deleteRole(roleId) {
+        const role = this.roles.find(r => r.id === roleId);
+        if (!role) {
+            this.showError('Rôle non trouvé');
+            return;
+        }
+
+        // Vérifications de sécurité
+        if (['super_admin', 'admin', 'user'].includes(role.name)) {
+            this.showError('Les rôles système ne peuvent pas être supprimés');
+            return;
+        }
+
+        const userCount = this.users.filter(u => u.roles?.id === roleId).length;
+        if (userCount > 0) {
+            this.showError(`Impossible de supprimer: ${userCount} utilisateur(s) ont ce rôle`);
+            return;
+        }
+
+        // Confirmation de suppression
+        this.createModal(
+            'confirmDeleteRole',
+            '⚠️ Supprimer le rôle',
+            `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🗑️</div>
+                    <h3 style="color: #ef4444; margin-bottom: 15px;">Supprimer définitivement ce rôle ?</h3>
+                    
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                        <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
+                            <span style="font-size: 20px;">${role.icon}</span>
+                            <div>
+                                <div style="font-weight: 600; color: ${role.color};">${role.display_name}</div>
+                                <div style="font-size: 12px; color: #64748b;">${role.name} • Niveau ${role.level}/100</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="color: #ef4444; font-weight: 600; margin: 20px 0;">
+                        ⚠️ Cette action est IRRÉVERSIBLE !
+                    </p>
+                    
+                    <div style="margin: 20px 0;">
+                        <input type="text" id="confirmDeleteRoleInput" placeholder="Tapez 'SUPPRIMER' pour confirmer" 
+                               style="width: 100%; padding: 10px; border: 2px solid #ef4444; border-radius: 6px; text-align: center; font-weight: 600;">
+                    </div>
+                </div>
+            `,
+            {
+                primaryButton: {
+                    text: '🗑️ Supprimer définitivement',
+                    action: () => this.executeDeleteRole(role)
+                },
+                secondaryButton: {
+                    text: 'Annuler',
+                    action: () => this.hideModal()
+                }
+            }
+        );
+    }
+
+    async executeDeleteRole(role) {
+        const confirmInput = document.getElementById('confirmDeleteRoleInput');
+        if (!confirmInput || confirmInput.value !== 'SUPPRIMER') {
+            this.showError('Veuillez taper "SUPPRIMER" pour confirmer');
+            return;
+        }
+
+        try {
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Suppression en cours...';
+            }
+
+            const { error } = await this.supabase
+                .from('roles')
+                .delete()
+                .eq('id', role.id);
+
+            if (error) throw error;
+
+            await this.refreshData();
+            this.hideModal();
+            this.showSuccess(`Rôle "${role.display_name}" supprimé définitivement`);
+
+        } catch (error) {
+            console.error('Erreur suppression rôle:', error);
+            this.showError(`Erreur lors de la suppression : ${error.message}`);
+
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '🗑️ Supprimer définitivement';
+            }
+        }
     }
 
     // === MODAL SYSTEM ===
