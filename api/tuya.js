@@ -1,6 +1,6 @@
 // Proxy API Vercel pour contourner CORS avec Tuya Smart
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+// Utiliser fetch natif de Node.js 18+ (pas de require nécessaire)
 
 const TUYA_CONFIG = {
     ACCESS_ID: 'gmxydg3hn4fgxkkxgkjw',
@@ -103,15 +103,26 @@ module.exports = async function handler(req, res) {
         switch (action) {
             case 'auth':
                 // Authentification - obtenir le token
-                console.log('🔑 Authentication request');
-                const authData = await callTuyaAPI('GET', '/v1.0/token?grant_type=1');
-                res.json({ 
-                    success: true, 
-                    data: {
-                        access_token: authData.access_token,
-                        expire_time: authData.expire_time
-                    }
+                console.log('🔑 Authentication request starting...');
+                console.log('🔑 Tuya Config:', { 
+                    ACCESS_ID: TUYA_CONFIG.ACCESS_ID, 
+                    BASE_URL: TUYA_CONFIG.BASE_URL 
                 });
+                
+                try {
+                    const authData = await callTuyaAPI('GET', '/v1.0/token?grant_type=1');
+                    console.log('🔑 Auth successful:', authData);
+                    res.json({ 
+                        success: true, 
+                        data: {
+                            access_token: authData.access_token,
+                            expire_time: authData.expire_time
+                        }
+                    });
+                } catch (authError) {
+                    console.error('🔑 Auth failed:', authError);
+                    throw authError;
+                }
                 break;
                 
             case 'devices':

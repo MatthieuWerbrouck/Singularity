@@ -15,6 +15,24 @@ class TuyaLightManager {
     
     async authenticate() {
         try {
+            console.log('🔐 Test de connexion API...');
+            
+            // Test d'abord avec notre API de test
+            const testResponse = await fetch(`${this.apiBase}/api/test?action=ping`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('🧪 Test API Response:', testResponse.status, testResponse.statusText);
+            const testData = await testResponse.json();
+            console.log('🧪 Test API Data:', testData);
+
+            if (!testResponse.ok) {
+                throw new Error(`Test API failed: ${testResponse.status}`);
+            }
+
             console.log('🔐 Authentification via proxy API...');
             
             const response = await fetch(`${this.apiBase}/api/tuya?action=auth`, {
