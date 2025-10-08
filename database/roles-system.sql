@@ -39,11 +39,24 @@ CREATE TABLE public.role_permissions (
     UNIQUE(role_id, permission_id)
 );
 
--- Ajout du rôle dans la table profiles
+-- Ajout du rôle dans la table profiles (après migration-profiles.sql)
 ALTER TABLE public.profiles 
-ADD COLUMN role_id UUID REFERENCES public.roles(id) DEFAULT NULL,
-ADD COLUMN is_super_admin BOOLEAN DEFAULT false,
-ADD COLUMN status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended'));
+ADD COLUMN IF NOT EXISTS role_id UUID,
+ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN DEFAULT false;
+
+-- Ajouter la contrainte de clé étrangère si elle n'existe pas
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'profiles_role_id_fkey' 
+        AND table_name = 'profiles'
+    ) THEN
+        ALTER TABLE public.profiles 
+        ADD CONSTRAINT profiles_role_id_fkey 
+        FOREIGN KEY (role_id) REFERENCES public.roles(id);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- DONNÉES INITIALES DES RÔLES

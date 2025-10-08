@@ -16,10 +16,15 @@ Cette erreur indique que l'utilisateur que vous essayez de connecter n'existe pa
    - ✅ Cocher "Auto Confirm User"
 4. **Cliquer sur "Create user"**
 
-### Dans l'éditeur SQL de Supabase :
+### Configuration de la base de données :
 
-1. **Copier l'UUID de l'utilisateur créé** (visible dans la liste des utilisateurs)
-2. **Ouvrir SQL Editor dans Supabase**
+1. **Exécuter d'abord le script complet de déploiement** :
+   - Aller dans **SQL Editor** de Supabase
+   - Copier tout le contenu de `database/deploy-complete.sql`
+   - Exécuter le script (cela configure tous les rôles et permissions)
+
+2. **Copier l'UUID de l'utilisateur créé** (visible dans la liste des utilisateurs)
+
 3. **Exécuter ce script** (remplacer `USER_UUID_ICI` par l'UUID réel) :
 
 ```sql
