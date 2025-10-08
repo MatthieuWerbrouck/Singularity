@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation Singularity</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .step {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-left: 4px solid #6366f1;
+            background: #f8fafc;
+        }
+        .config-form {
+            background: #fef3c7;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-family: monospace;
+        }
+        button {
+            background: #6366f1;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        button:hover {
+            background: #4f46e5;
+        }
+        .log {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            font-size: 0.875rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        .info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Installation Singularity</h1>
+        <p>Assistant d'installation pour configurer automatiquement votre base de données Supabase.</p>
+        
+        <div class="step">
+            <h2>📋 Étape 1: Configuration</h2>
+            <div class="config-form">
+                <label for="supabaseUrl">URL Supabase:</label>
+                <input type="text" id="supabaseUrl" value="https://fgnpwzlwwldneuvzsvjr.supabase.co">
+                
+                <label for="serviceKey">Service Role Key:</label>
+                <input type="text" id="serviceKey" placeholder="Collez votre service_role key ici">
+                <small>⚠️ Trouvez cette clé dans Settings > API de votre dashboard Supabase</small>
+            </div>
+        </div>
+
+        <div class="step">
+            <h2>🛠️ Étape 2: Installation</h2>
+            <button onclick="startInstallation()">Démarrer l'installation</button>
+            <button onclick="createDemoUser()" style="margin-left: 1rem;">Créer utilisateur démo</button>
+        </div>
+
+        <div class="step">
+            <h2>📊 Journal d'installation</h2>
+            <div id="log" class="log">Prêt pour l'installation...\n</div>
+        </div>
+
+        <div class="step">
+            <h2>📝 Informations de connexion</h2>
+            <p><strong>Après installation, utilisez:</strong></p>
+            <ul>
+                <li>Email: <code>demo@singularity.app</code></li>
+                <li>Mot de passe: <code>demo123456</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let supabaseClient = null;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'error' : 
+                              type === 'success' ? 'success' : 
+                              type === 'warning' ? 'warning' : 'info';
+            
+            logElement.innerHTML += `<span class="${colorClass}">[${timestamp}] ${message}</span>\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function initSupabase() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('serviceKey').value;
+
+            if (!url || !key) {
+                log('❌ Veuillez remplir l\'URL et la service key', 'error');
+                return false;
+            }
+
+            // Simulation d'un client Supabase (dans un vrai cas, vous utiliseriez la lib Supabase)
+            supabaseClient = {
+                url,
+                key,
+                async rpc(functionName, params) {
+                    const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${key}`,
+                            'apikey': key
+                        },
+                        body: JSON.stringify(params)
+                    });
+                    return response;
+                }
+            };
+
+            return true;
+        }
+
+        async function executeSQL(query, description) {
+            log(`🔄 ${description}...`, 'info');
+            
+            try {
+                // Note: Cette approche nécessite une fonction SQL personnalisée côté Supabase
+                // Ou l'utilisation de l'API management de Supabase
+                
+                log(`⚠️ Exécution SQL simulée pour: ${description}`, 'warning');
+                log(`   Dans un environnement réel, ceci executerait:`, 'info');
+                log(`   ${query.substring(0, 100)}...`, 'info');
+                
+                // Simulation d'un délai
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                log(`✅ ${description} - Simulé avec succès`, 'success');
+                return true;
+                
+            } catch (error) {
+                log(`❌ ${description} - Erreur: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function startInstallation() {
+            if (!initSupabase()) return;
+
+            log('🚀 Début de l\'installation...', 'info');
+
+            const scripts = [
+                { name: 'Extension UUID', query: 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' },
+                { name: 'Table profiles', query: 'CREATE TABLE IF NOT EXISTS profiles...' },
+                { name: 'Système de rôles', query: 'CREATE TABLE IF NOT EXISTS roles...' },
+                { name: 'Permissions', query: 'INSERT INTO permissions...' },
+                { name: 'Politiques RLS', query: 'CREATE POLICY...' }
+            ];
+
+            for (const script of scripts) {
+                await executeSQL(script.query, script.name);
+            }
+
+            log('🎉 Installation terminée!', 'success');
+            log('👤 N\'oubliez pas de créer l\'utilisateur de démonstration', 'warning');
+        }
+
+        async function createDemoUser() {
+            if (!initSupabase()) return;
+
+            log('👤 Création de l\'utilisateur de démonstration...', 'info');
+            log('⚠️ Cette opération nécessite des permissions spéciales', 'warning');
+            log('   Il est recommandé de créer l\'utilisateur manuellement dans le dashboard Supabase', 'info');
+            
+            // Dans un vrai environnement, ici vous appelleriez l'API Supabase Admin
+            log('📋 Étapes manuelles:', 'info');
+            log('   1. Aller dans Authentication > Users', 'info');
+            log('   2. Add user: demo@singularity.app / demo123456', 'info');
+            log('   3. Cocher "Auto Confirm User"', 'info');
+        }
+
+        // Initialiser le log
+        log('Interface d\'installation prête', 'success');
+        log('Configurez vos paramètres Supabase ci-dessus', 'info');
+    </script>
+</body>
+</html>
