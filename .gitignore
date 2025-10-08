@@ -3,6 +3,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
 
 # Build outputs
 dist/
@@ -19,6 +20,20 @@ build/
 *.swp
 *.swo
 *~
+
+# Development and setup files (not needed for production)
+setup-database.js
+setup.html  
+install.bat
+TROUBLESHOOTING.md
+INSTALLATION-RAPIDE.md
+
+# Database development files (not needed for production)
+database/
+*.sql
+
+# Vercel config variants
+vercel-simple.json
 
 # Logs
 logs/
@@ -44,3 +59,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
