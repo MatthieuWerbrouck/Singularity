@@ -143,11 +143,41 @@ export class AuthManager {
 
     // Vérifier si l'utilisateur a accès à l'administration
     async hasAdminAccess() {
+        console.log('🔍 hasAdminAccess - Début');
         const profile = await this.getUserProfile();
-        if (!profile) return false;
+        console.log('👤 Profil chargé:', profile);
         
-        // Super admin ou niveau 80+ (admin/super_admin)
-        return profile.is_super_admin || (profile.roles?.level >= 80);
+        if (!profile) {
+            console.log('❌ Pas de profil');
+            return false;
+        }
+        
+        // Vérifier is_super_admin
+        if (profile.is_super_admin) {
+            console.log('👑 Super admin détecté');
+            return true;
+        }
+        
+        // Vérifier le niveau du rôle (admin = niveau 80+)
+        const roleLevel = profile.roles?.level;
+        console.log('🎯 Niveau du rôle:', roleLevel);
+        
+        if (roleLevel && roleLevel >= 80) {
+            console.log('✅ Niveau admin suffisant:', roleLevel);
+            return true;
+        }
+        
+        // Vérifier le nom du rôle directement
+        const roleName = profile.roles?.name;
+        console.log('🏷️ Nom du rôle:', roleName);
+        
+        if (roleName && ['admin', 'super_admin'].includes(roleName)) {
+            console.log('✅ Rôle admin détecté:', roleName);
+            return true;
+        }
+        
+        console.log('❌ Pas d\'accès admin');
+        return false;
     }
 
     updateUI() {
