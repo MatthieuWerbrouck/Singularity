@@ -552,6 +552,117 @@ class AdminManager {
         `;
     }
 
+    renderEditUserForm(user) {
+        return `
+            <form id="editUserForm">
+                <!-- Information de base -->
+                <div class="form-group">
+                    <label class="form-label">Email actuel</label>
+                    <div style="padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-style: italic;">
+                        ${user.email}
+                    </div>
+                    <small style="color: #6b7280; font-size: 12px;">L'email ne peut pas être modifié pour des raisons de sécurité</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editUserFullName">Nom complet</label>
+                    <input type="text" id="editUserFullName" class="form-input" placeholder="Prénom Nom" value="${user.full_name || ''}">
+                </div>
+
+                <!-- Gestion du rôle -->
+                <div class="form-group">
+                    <label class="form-label" for="editUserRole">Rôle</label>
+                    <select id="editUserRole" class="form-select">
+                        <option value="">Aucun rôle</option>
+                        ${this.roles.map(role => `
+                            <option value="${role.id}" ${user.roles?.id == role.id ? 'selected' : ''}>
+                                ${role.icon} ${role.display_name} (Niveau ${role.level})
+                            </option>
+                        `).join('')}
+                    </select>
+                    ${user.roles ? `
+                        <small style="color: #3b82f6; font-size: 12px;">
+                            Rôle actuel: ${user.roles.icon} ${user.roles.display_name} (Niveau ${user.roles.level})
+                        </small>
+                    ` : ''}
+                </div>
+
+                <!-- Gestion du statut -->
+                <div class="form-group">
+                    <label class="form-label" for="editUserStatus">Statut du compte</label>
+                    <select id="editUserStatus" class="form-select">
+                        <option value="active" ${user.status === 'active' ? 'selected' : ''}>✅ Actif</option>
+                        <option value="inactive" ${user.status === 'inactive' ? 'selected' : ''}>⏸️ Inactif</option>
+                        <option value="suspended" ${user.status === 'suspended' ? 'selected' : ''}>❌ Suspendu</option>
+                    </select>
+                </div>
+
+                <!-- Permissions spéciales -->
+                ${user.id !== this.currentUser.id ? `
+                    <div class="form-group">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="editUserSuperAdmin" ${user.is_super_admin ? 'checked' : ''}>
+                            <label for="editUserSuperAdmin">Super Administrateur</label>
+                        </div>
+                        <small style="color: #ef4444; font-size: 12px;">⚠️ Attention : Les super admins ont tous les droits sur l'application</small>
+                    </div>
+                ` : `
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin: 15px 0;">
+                        <div style="color: #92400e; font-weight: 600; margin-bottom: 5px;">🚨 Vous éditez votre propre compte</div>
+                        <small style="color: #92400e; font-size: 12px;">Vous ne pouvez pas modifier vos propres permissions administrateur par sécurité.</small>
+                    </div>
+                `}
+
+                <!-- Actions sur le mot de passe -->
+                <div class="form-group">
+                    <label class="form-label">Gestion du mot de passe</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" id="sendPasswordResetBtn" 
+                                style="background: #3b82f6; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            📧 Envoyer reset mot de passe
+                        </button>
+                        <button type="button" id="generateTempPasswordBtn"
+                                style="background: #f59e0b; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🔑 Générer mot de passe temporaire
+                        </button>
+                    </div>
+                    <small style="color: #6b7280; font-size: 12px;">L'utilisateur recevra les instructions par email</small>
+                </div>
+
+                <!-- Informations de compte -->
+                <div class="form-group">
+                    <label class="form-label">Informations du compte</label>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+                            <div><strong>Créé le:</strong> ${new Date(user.created_at).toLocaleString('fr-FR')}</div>
+                            <div><strong>ID utilisateur:</strong> ${user.id}</div>
+                            ${user.roles ? `<div><strong>Niveau de rôle:</strong> ${user.roles.level}/100</div>` : ''}
+                            <div><strong>Super Admin:</strong> ${user.is_super_admin ? '✅ Oui' : '❌ Non'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions dangereuses -->
+                ${user.id !== this.currentUser.id ? `
+                    <div style="border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 20px;">
+                        <label class="form-label" style="color: #ef4444;">Actions dangereuses</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" id="deleteUserBtn" 
+                                    style="background: #ef4444; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                🗑️ Supprimer le compte
+                            </button>
+                            <button type="button" id="forceLogoutBtn"
+                                    style="background: #f97316; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                🚪 Forcer la déconnexion
+                            </button>
+                        </div>
+                        <small style="color: #ef4444; font-size: 12px;">⚠️ Ces actions sont irréversibles</small>
+                    </div>
+                ` : ''}
+            </form>
+        `;
+    }
+
     async createUser() {
         const form = document.getElementById('addUserForm');
         if (!form.checkValidity()) {
@@ -634,6 +745,74 @@ class AdminManager {
             }
         }
     }
+
+    async updateUser() {
+        const form = document.getElementById('editUserForm');
+        if (!form) return;
+
+        const user = this.currentEditUser;
+        if (!user) {
+            this.showError('Erreur: utilisateur non défini');
+            return;
+        }
+
+        const formData = {
+            fullName: document.getElementById('editUserFullName')?.value || null,
+            roleId: document.getElementById('editUserRole')?.value || null,
+            status: document.getElementById('editUserStatus')?.value || 'active',
+            isSuperAdmin: user.id !== this.currentUser.id ? 
+                (document.getElementById('editUserSuperAdmin')?.checked || false) : 
+                user.is_super_admin // Conserver la valeur actuelle pour soi-même
+        };
+
+        console.log('Modification utilisateur:', { userId: user.id, formData });
+
+        try {
+            // Désactiver le bouton pendant la mise à jour
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sauvegarde en cours...';
+            }
+
+            // Mise à jour du profil
+            const { error } = await this.supabase
+                .from('profiles')
+                .update({
+                    full_name: formData.fullName,
+                    role_id: formData.roleId === '' ? null : formData.roleId,
+                    status: formData.status,
+                    is_super_admin: formData.isSuperAdmin,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            // Actualiser les données
+            await this.refreshData();
+
+            // Fermer modal et afficher succès
+            this.hideModal();
+            this.showSuccess(`Utilisateur ${user.email} modifié avec succès !`);
+
+            // Notification spéciale si l'utilisateur se modifie lui-même
+            if (user.id === this.currentUser.id) {
+                this.showMessage('Vos modifications ont été sauvegardées', 'info');
+            }
+
+        } catch (error) {
+            console.error('Erreur modification utilisateur:', error);
+            this.showError(`Erreur lors de la modification : ${error.message}`);
+
+            // Réactiver le bouton
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Sauvegarder les modifications';
+            }
+        }
+    }
     
     updateUsersTable(users) {
         const tableBody = document.getElementById('usersTableBody');
@@ -665,10 +844,61 @@ class AdminManager {
         });
     }
 
+    showEditUserModal(user) {
+        this.currentEditUser = user; // Stocker l'utilisateur en cours d'édition
+        this.createModal('editUser', `Éditer: ${user.email}`, this.renderEditUserForm(user), {
+            primaryButton: {
+                text: 'Sauvegarder les modifications',
+                action: () => this.updateUser()
+            },
+            secondaryButton: {
+                text: 'Annuler',
+                action: () => this.hideModal()
+            }
+        });
+
+        // Ajouter les gestionnaires d'événements pour les actions spéciales
+        this.setupEditModalEventListeners(user);
+    }
+
+    setupEditModalEventListeners(user) {
+        // Bouton reset mot de passe
+        document.getElementById('sendPasswordResetBtn')?.addEventListener('click', () => {
+            this.sendPasswordReset(user);
+        });
+
+        // Bouton générer mot de passe temporaire
+        document.getElementById('generateTempPasswordBtn')?.addEventListener('click', () => {
+            this.generateTempPassword(user);
+        });
+
+        // Bouton supprimer utilisateur (seulement si pas soi-même)
+        if (user.id !== this.currentUser.id) {
+            document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
+                this.confirmDeleteUser(user);
+            });
+
+            document.getElementById('forceLogoutBtn')?.addEventListener('click', () => {
+                this.forceUserLogout(user);
+            });
+        }
+    }
+
     async editUser(userId) {
-        // TODO: Implémenter l'édition d'utilisateur
-        console.log('Édition utilisateur:', userId);
-        this.showMessage('Édition utilisateur - En développement', 'info');
+        try {
+            // Récupérer les données complètes de l'utilisateur
+            const user = this.users.find(u => u.id === userId);
+            if (!user) {
+                this.showError('Utilisateur non trouvé');
+                return;
+            }
+
+            console.log('Édition utilisateur:', user);
+            this.showEditUserModal(user);
+        } catch (error) {
+            console.error('Erreur édition utilisateur:', error);
+            this.showError('Erreur lors de l\'ouverture de l\'édition');
+        }
     }
 
     async toggleUserStatus(userId, currentStatus) {
@@ -687,6 +917,157 @@ class AdminManager {
         } catch (error) {
             console.error('Erreur changement statut:', error);
             this.showError('Erreur lors du changement de statut');
+        }
+    }
+
+    // === ACTIONS SPÉCIALES SUR LES UTILISATEURS ===
+
+    async sendPasswordReset(user) {
+        try {
+            const { error } = await this.supabase.auth.resetPasswordForEmail(user.email, {
+                redirectTo: window.location.origin + '/reset-password'
+            });
+
+            if (error) throw error;
+
+            this.showSuccess(`Email de réinitialisation envoyé à ${user.email}`);
+        } catch (error) {
+            console.error('Erreur reset password:', error);
+            this.showError('Erreur lors de l\'envoi du reset mot de passe');
+        }
+    }
+
+    async generateTempPassword(user) {
+        // Générer un mot de passe temporaire sécurisé
+        const tempPassword = this.generateSecurePassword();
+        
+        try {
+            // Note: Supabase ne permet pas de changer directement le mot de passe d'un utilisateur
+            // Cette fonctionnalité nécessiterait une fonction serveur ou une API admin
+            this.showMessage(`Mot de passe temporaire généré: ${tempPassword}`, 'info');
+            this.showMessage('⚠️ Fonctionnalité complète nécessite une API serveur', 'warning');
+            
+            // TODO: Implémenter via fonction serveur
+            // await this.supabase.rpc('admin_update_user_password', { 
+            //     user_id: user.id, 
+            //     new_password: tempPassword 
+            // });
+            
+        } catch (error) {
+            console.error('Erreur génération mot de passe:', error);
+            this.showError('Erreur lors de la génération du mot de passe temporaire');
+        }
+    }
+
+    generateSecurePassword() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
+        let password = '';
+        for (let i = 0; i < 12; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+    }
+
+    async forceUserLogout(user) {
+        try {
+            // Note: Supabase ne fournit pas directement de méthode pour forcer la déconnexion d'un utilisateur
+            // Cette fonctionnalité nécessiterait une approche via la base de données ou une API admin
+            
+            this.showMessage(`Déconnexion forcée pour ${user.email}`, 'info');
+            this.showMessage('⚠️ Fonctionnalité complète nécessite une API serveur', 'warning');
+            
+            // TODO: Implémenter via fonction serveur pour invalider les sessions
+            // await this.supabase.rpc('admin_force_user_logout', { user_id: user.id });
+            
+        } catch (error) {
+            console.error('Erreur déconnexion forcée:', error);
+            this.showError('Erreur lors de la déconnexion forcée');
+        }
+    }
+
+    confirmDeleteUser(user) {
+        const confirmModal = this.createModal(
+            'confirmDelete',
+            '⚠️ Confirmation de suppression',
+            `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🗑️</div>
+                    <h3 style="color: #ef4444; margin-bottom: 15px;">Supprimer définitivement cet utilisateur ?</h3>
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                        <strong>Utilisateur:</strong> ${user.full_name || 'Sans nom'}<br>
+                        <strong>Email:</strong> ${user.email}<br>
+                        <strong>Rôle:</strong> ${user.roles?.display_name || 'Aucun rôle'}
+                    </div>
+                    <p style="color: #ef4444; font-weight: 600; margin: 20px 0;">
+                        ⚠️ Cette action est IRRÉVERSIBLE !
+                    </p>
+                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">
+                        Toutes les données de l'utilisateur seront définitivement supprimées.
+                    </p>
+                    <div style="margin: 20px 0;">
+                        <input type="text" id="confirmDeleteInput" placeholder="Tapez 'SUPPRIMER' pour confirmer" 
+                               style="width: 100%; padding: 10px; border: 2px solid #ef4444; border-radius: 6px; text-align: center; font-weight: 600;">
+                    </div>
+                </div>
+            `,
+            {
+                primaryButton: {
+                    text: '🗑️ Supprimer définitivement',
+                    action: () => this.executeDeleteUser(user)
+                },
+                secondaryButton: {
+                    text: 'Annuler',
+                    action: () => this.hideModal()
+                }
+            }
+        );
+
+        // Focus sur l'input de confirmation
+        setTimeout(() => {
+            document.getElementById('confirmDeleteInput')?.focus();
+        }, 100);
+    }
+
+    async executeDeleteUser(user) {
+        const confirmInput = document.getElementById('confirmDeleteInput');
+        if (!confirmInput || confirmInput.value !== 'SUPPRIMER') {
+            this.showError('Veuillez taper "SUPPRIMER" pour confirmer');
+            return;
+        }
+
+        try {
+            // Désactiver le bouton
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Suppression en cours...';
+            }
+
+            // Supprimer le profil (cela déclenchera la suppression en cascade si configurée)
+            const { error } = await this.supabase
+                .from('profiles')
+                .delete()
+                .eq('id', user.id);
+
+            if (error) throw error;
+
+            // Actualiser les données
+            await this.refreshData();
+
+            // Fermer modal et afficher succès
+            this.hideModal();
+            this.showSuccess(`Utilisateur ${user.email} supprimé définitivement`);
+
+        } catch (error) {
+            console.error('Erreur suppression utilisateur:', error);
+            this.showError(`Erreur lors de la suppression : ${error.message}`);
+
+            // Réactiver le bouton
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '🗑️ Supprimer définitivement';
+            }
         }
     }
 
