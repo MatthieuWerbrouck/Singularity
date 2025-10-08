@@ -1,0 +1,21 @@
+# Files to ignore during Vercel deployment
+
+# Documentation
+README.md
+DATABASE.md
+
+# Git files
+.git/
+.gitignore
+
+# Node modules (already excluded by default but explicit)
+node_modules/
+
+# Development files
+*.log
+.env.local
+.env.development
+
+# OS files
+.DS_Store
+Thumbs.db
