@@ -1,5 +1,6 @@
 import { initSupabase, authManager } from './auth.js';
 import { APP_CONFIG } from './config.js';
+import { AdminManager } from './admin.js';
 
 // Utilitaires pour l'affichage des messages
 function showMessage(text, type = 'info') {
@@ -101,15 +102,93 @@ function setupAuthForms() {
 }
 
 // Initialisation du dashboard
-function setupDashboard() {
+async function setupDashboard() {
     const dashboardCards = document.querySelectorAll('.dashboard-card');
+    
+    // Vérifier si l'utilisateur est admin pour ajouter le module admin
+    console.log('🔍 Vérification accès admin...');
+    const isAdmin = await checkAdminAccess();
+    console.log('👑 Accès admin:', isAdmin);
+    
+    if (isAdmin) {
+        console.log('✅ Ajout carte admin');
+        addAdminCard();
+    } else {
+        console.log('❌ Pas d\'accès admin');
+    }
     
     dashboardCards.forEach(card => {
         card.addEventListener('click', () => {
             const title = card.querySelector('h3').textContent;
-            showMessage(`Module "${title}" en développement`, 'info');
+            
+            // Gestion spécifique pour le module admin
+            if (title.includes('Administration')) {
+                initAdminModule();
+            } else {
+                showMessage(`Module "${title}" - À développer prochainement`, 'info');
+            }
         });
     });
+}
+
+// Vérification des droits administrateur
+async function checkAdminAccess() {
+    console.log('🔐 checkAdminAccess - Début');
+    
+    if (!authManager.isAuthenticated()) {
+        console.log('❌ Utilisateur non connecté');
+        return false;
+    }
+    
+    try {
+        console.log('🔍 Appel hasAdminAccess...');
+        const hasAccess = await authManager.hasAdminAccess();
+        console.log('🎯 Résultat hasAdminAccess:', hasAccess);
+        return hasAccess;
+    } catch (error) {
+        console.log('❌ Vérification admin échouée:', error);
+        return false;
+    }
+}
+
+// Ajouter la carte d'administration au dashboard
+function addAdminCard() {
+    const dashboardGrid = document.querySelector('.dashboard-grid');
+    if (!dashboardGrid) return;
+    
+    // Vérifier si la carte admin existe déjà
+    if (document.querySelector('[data-module="admin"]')) return;
+    
+    const adminCard = document.createElement('div');
+    adminCard.className = 'dashboard-card';
+    adminCard.setAttribute('data-module', 'admin');
+    adminCard.style.background = 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)';
+    adminCard.style.color = 'white';
+    
+    adminCard.innerHTML = `
+        <h3>👑 Administration</h3>
+        <p>Gestion des utilisateurs et rôles</p>
+    `;
+    
+    // Ajouter l'événement clic directement
+    adminCard.addEventListener('click', () => {
+        console.log('🖱️ Clic sur carte admin - Redirection vers admin.html');
+        window.location.href = 'admin.html';
+    });
+    
+    dashboardGrid.appendChild(adminCard);
+}
+
+// Initialisation du module administration
+async function initAdminModule() {
+    try {
+        const adminManager = new AdminManager();
+        await adminManager.init();
+        showMessage('👑 Panel d\'administration chargé', 'success');
+    } catch (error) {
+        console.error('Erreur initialisation admin:', error);
+        showMessage(error.message || 'Erreur lors du chargement du panel d\'administration', 'error');
+    }
 }
 
 // Mode demo (quand Supabase n'est pas configuré)

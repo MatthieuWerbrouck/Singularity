@@ -1,0 +1,7 @@
+{
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "installCommand": "",
+  "devCommand": "npx http-server -p 3000 --cors",
+  "alias": ["matthieu-singularity.vercel.app"]
+}

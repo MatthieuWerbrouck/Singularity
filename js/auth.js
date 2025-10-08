@@ -91,6 +91,50 @@ export class AuthManager {
         return this.user;
     }
 
+    // Charger le profil complet avec rôles et permissions
+    async getUserProfile() {
+        if (!supabase || !this.user) {
+            return null;
+        }
+
+        try {
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select(`
+                    *,
+                    roles (
+                        id,
+                        name,
+                        display_name,
+                        level,
+                        color,
+                        icon
+                    )
+                `)
+                .eq('id', this.user.id)
+                .single();
+
+            if (error) {
+                console.error('Erreur chargement profil:', error);
+                return null;
+            }
+
+            return profile;
+        } catch (error) {
+            console.error('Erreur getUserProfile:', error);
+            return null;
+        }
+    }
+
+    // Vérifier si l'utilisateur a accès à l'administration
+    async hasAdminAccess() {
+        const profile = await this.getUserProfile();
+        if (!profile) return false;
+        
+        // Super admin ou niveau 80+ (admin/super_admin)
+        return profile.is_super_admin || (profile.roles?.level >= 80);
+    }
+
     updateUI() {
         const loginPage = document.getElementById('loginPage');
         const registerPage = document.getElementById('registerPage');
@@ -118,3 +162,6 @@ export class AuthManager {
 
 // Instance globale du gestionnaire d'authentification
 export const authManager = new AuthManager();
+
+// Exposer globalement pour le debugging
+window.authManager = authManager;
