@@ -1,12 +1,11 @@
-// Proxy API Vercel pour Tuya Smart - Version HTTP native
+// Proxy API Vercel pour contourner CORS avec Tuya Smart
 const crypto = require('crypto');
-const https = require('https');
-const querystring = require('querystring');
+// Utiliser fetch natif de Node.js 18+ (pas de require nécessaire)
 
 const TUYA_CONFIG = {
     ACCESS_ID: 'gmxydg3hn4fgxkkxgkjw',
     SECRET: '2d58fdf6bf474081b168e9114435ab8d', 
-    BASE_URL: 'openapi.tuyaus.com',
+    BASE_URL: 'https://openapi.tuyaus.com',
     DATA_CENTER: 'us'
 };
 
@@ -19,89 +18,67 @@ function generateSignature(clientId, timestamp, nonce, signStr, secret) {
 }
 
 /**
- * Effectuer un appel HTTPS vers Tuya avec le module natif
+ * Générer les headers d'authentification Tuya
  */
-function callTuyaAPI(method, path, body = null, accessToken = '') {
-    return new Promise((resolve, reject) => {
-        const timestamp = Date.now().toString();
-        const nonce = Math.random().toString(36).substring(2, 15);
-        
-        // Construction du string à signer
-        const bodyStr = body ? JSON.stringify(body) : '';
-        const bodyHash = crypto.createHash('sha256').update(bodyStr, 'utf8').digest('hex');
-        const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + path;
-        
-        // Génération signature
-        const sign = generateSignature(
-            TUYA_CONFIG.ACCESS_ID,
-            timestamp,
-            nonce,
-            stringToSign,
-            TUYA_CONFIG.SECRET
-        );
-        
-        const headers = {
-            'client_id': TUYA_CONFIG.ACCESS_ID,
-            'sign': sign,
-            'sign_method': 'HMAC-SHA256',
-            't': timestamp,
-            'nonce': nonce,
-            'Content-Type': 'application/json',
-            'Content-Length': bodyStr.length
-        };
-        
-        if (accessToken) {
-            headers['access_token'] = accessToken;
-        }
-        
-        console.log('🌐 Tuya HTTPS Call:', method, path, accessToken ? 'with token' : 'no token');
-        console.log('🔑 Headers:', headers);
-        
-        const options = {
-            hostname: TUYA_CONFIG.BASE_URL,
-            port: 443,
-            path: path,
-            method: method,
-            headers: headers
-        };
-        
-        const req = https.request(options, (res) => {
-            let data = '';
-            
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            
-            res.on('end', () => {
-                try {
-                    console.log('📥 Tuya Response Status:', res.statusCode);
-                    console.log('📥 Tuya Response Data:', data);
-                    
-                    const jsonData = JSON.parse(data);
-                    
-                    if (!jsonData.success) {
-                        reject(new Error(`Tuya API Error: ${jsonData.msg || 'Unknown error'} (Code: ${jsonData.code})`));
-                    } else {
-                        resolve(jsonData.result);
-                    }
-                } catch (parseError) {
-                    console.error('❌ JSON Parse Error:', parseError);
-                    reject(new Error('Invalid JSON response from Tuya API'));
-                }
-            });
-        });
-        
-        req.on('error', (error) => {
-            console.error('❌ HTTPS Request Error:', error);
-            reject(error);
-        });
-        
-        if (bodyStr && method !== 'GET') {
-            req.write(bodyStr);
-        }
-        
-        req.end();
+function generateHeaders(method, url, body = '', accessToken = '') {
+    const timestamp = Date.now().toString();
+    const nonce = Math.random().toString(36).substring(2, 15);
+    
+    // Construction du string à signer
+    let signUrl = url.replace(TUYA_CONFIG.BASE_URL, '');
+    const bodyHash = crypto.createHash('sha256').update(body || '', 'utf8').digest('hex');
+    const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + signUrl;
+    
+    // Génération signature
+    const sign = generateSignature(
+        TUYA_CONFIG.ACCESS_ID,
+        timestamp,
+        nonce,
+        stringToSign,
+        TUYA_CONFIG.SECRET
+    );
+    
+    const headers = {
+        'client_id': TUYA_CONFIG.ACCESS_ID,
+        'sign': sign,
+        'sign_method': 'HMAC-SHA256',
+        't': timestamp,
+        'nonce': nonce,
+        'Content-Type': 'application/json'
+    };
+    
+    if (accessToken) {
+        headers['access_token'] = accessToken;
+    }
+    
+    return headers;
+}
+
+/**
+ * Effectuer un appel API vers Tuya
+ */
+async function callTuyaAPI(method, endpoint, body = null, accessToken = '') {
+    const url = `${TUYA_CONFIG.BASE_URL}${endpoint}`;
+    const bodyStr = body ? JSON.stringify(body) : '';
+    
+    console.log('🌐 Tuya API Call:', method, endpoint, accessToken ? 'with token' : 'no token');
+    
+    const headers = generateHeaders(method, url, bodyStr, accessToken);
+    
+    const response = await fetch(url, {
+        method,
+        headers,
+        body: method === 'GET' ? undefined : bodyStr
     });
+    
+    const data = await response.json();
+    console.log('📥 Tuya Response:', data);
+    
+    if (!data.success) {
+        throw new Error(`Tuya API Error: ${data.msg || 'Unknown error'} (Code: ${data.code})`);
+    }
+    
+    return data.result;
 }
 
 // Handler principal de l'API
@@ -117,12 +94,7 @@ module.exports = async function handler(req, res) {
         return;
     }
     
-    console.log('🔍 API Request:', {
-        method: req.method,
-        url: req.url,
-        query: req.query,
-        timestamp: new Date().toISOString()
-    });
+    console.log('🔍 API Request:', req.method, req.url, req.query);
     
     try {
         const { action, deviceId } = req.query;
@@ -130,6 +102,7 @@ module.exports = async function handler(req, res) {
         
         switch (action) {
             case 'auth':
+                // Authentification - obtenir le token
                 console.log('🔑 Authentication request starting...');
                 console.log('🔑 Tuya Config:', { 
                     ACCESS_ID: TUYA_CONFIG.ACCESS_ID, 
@@ -139,7 +112,6 @@ module.exports = async function handler(req, res) {
                 try {
                     const authData = await callTuyaAPI('GET', '/v1.0/token?grant_type=1');
                     console.log('🔑 Auth successful:', authData);
-                    
                     res.json({ 
                         success: true, 
                         data: {
@@ -154,6 +126,7 @@ module.exports = async function handler(req, res) {
                 break;
                 
             case 'devices':
+                // Lister les appareils
                 console.log('📱 Devices list request');
                 const { access_token } = req.headers;
                 if (!access_token) {
@@ -165,6 +138,7 @@ module.exports = async function handler(req, res) {
                 break;
                 
             case 'device-status':
+                // Obtenir le statut d'un appareil
                 console.log('📊 Device status request for:', deviceId);
                 const { access_token: token1 } = req.headers;
                 if (!token1 || !deviceId) {
@@ -176,6 +150,7 @@ module.exports = async function handler(req, res) {
                 break;
                 
             case 'device-control':
+                // Contrôler un appareil
                 console.log('🎮 Device control request for:', deviceId, commands);
                 const { access_token: token2 } = req.headers;
                 if (!token2 || !deviceId || !commands) {
@@ -188,7 +163,7 @@ module.exports = async function handler(req, res) {
                 
             default:
                 console.log('❌ Invalid action:', action);
-                res.status(400).json({ success: false, error: 'Invalid action. Supported: auth, devices, device-status, device-control' });
+                res.status(400).json({ success: false, error: 'Invalid action' });
         }
         
     } catch (error) {
@@ -196,8 +171,7 @@ module.exports = async function handler(req, res) {
         res.status(500).json({ 
             success: false, 
             error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.stack : 'Internal server error',
-            timestamp: new Date().toISOString()
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 };

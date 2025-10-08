@@ -15,25 +15,7 @@ class TuyaLightManager {
     
     async authenticate() {
         try {
-            console.log('🔐 Test de connexion API...');
-            
-            // Test d'abord avec notre API de test
-            const testResponse = await fetch(`${this.apiBase}/api/test?action=ping`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('🧪 Test API Response:', testResponse.status, testResponse.statusText);
-            const testData = await testResponse.json();
-            console.log('🧪 Test API Data:', testData);
-
-            if (!testResponse.ok) {
-                throw new Error(`Test API failed: ${testResponse.status}`);
-            }
-
-            console.log('🔐 Authentification via proxy API...');
+            console.log('🔐 Authentification via proxy API HTTPS natif...');
             
             const response = await fetch(`${this.apiBase}/api/tuya?action=auth`, {
                 method: 'POST',
@@ -42,11 +24,16 @@ class TuyaLightManager {
                 }
             });
 
+            console.log('📡 Response status:', response.status, response.statusText);
+
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const errorText = await response.text();
+                console.error('� Response error body:', errorText);
+                throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
             }
 
             const data = await response.json();
+            console.log('📡 Response data:', data);
             
             if (!data.success) {
                 throw new Error(`Tuya Auth Error: ${data.error || 'Authentication failed'}`);
@@ -56,7 +43,7 @@ class TuyaLightManager {
             this.tokenExpiry = Date.now() + (data.data.expire_time * 1000);
             this.isConnected = true;
             
-            console.log('✅ Authentification Tuya réussie via proxy');
+            console.log('✅ Authentification Tuya réussie via proxy HTTPS');
             return true;
             
         } catch (error) {
