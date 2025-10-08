@@ -1,122 +1,150 @@
-// Test avancé credentials et endpoints Tuya
+// Test final Tuya avec validation complète
 const crypto = require('crypto');
 const https = require('https');
 
-const TUYA_CONFIG = {
+// Vos credentials actuels
+const TUYA_MAIN_CONFIG = {
     ACCESS_ID: 'gmxydg3hn4fgxkkxgkjw',
     SECRET: '2d58fdf6bf474081b168e9114435ab8d',
-    BASE_URL: 'openapi.tuyaus.com'
+    BASE_URL: 'openapi.tuyeus.com' // Test EU aussi
 };
 
-// Test de validation des credentials avec différents formats
-function generateSignatureV1(clientId, secret, timestamp, nonce, method, path) {
-    // Version basique selon certains exemples
-    const str = clientId + timestamp + nonce + method + path;
-    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
-}
+// Test avec différents data centers
+const DATA_CENTERS = {
+    US: 'openapi.tuyaus.com',
+    EU: 'openapi.tuyaeu.com',
+    CN: 'openapi.tuya.com',
+    IN: 'openapi.tuyain.com'
+};
 
-function generateSignatureV2(clientId, secret, timestamp, nonce, method, path, body = '') {
-    // Version avec body hash (plus commune)
+function generateCorrectSignature(clientId, secret, timestamp, nonce, method, path, body = '', accessToken = '') {
+    // Version finale basée sur la documentation officielle Tuya
     const bodyHash = crypto.createHash('sha256').update(body, 'utf8').digest('hex');
-    const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + path;
-    const str = clientId + timestamp + nonce + stringToSign;
-    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
+    
+    // String to Sign: Method + "\n" + Content-SHA256 + "\n" + Headers + "\n" + URL
+    const stringToSign = method.toUpperCase() + '\n' + bodyHash + '\n' + '\n' + path;
+    
+    // Sign String: clientId + accessToken + timestamp + nonce + stringToSign
+    const signString = clientId + (accessToken || '') + timestamp + nonce + stringToSign;
+    
+    console.log('🔐 SIGNATURE GENERATION:');
+    console.log('  Method:', method.toUpperCase());
+    console.log('  Body Hash:', bodyHash);
+    console.log('  Path:', path);
+    console.log('  String to Sign:', JSON.stringify(stringToSign));
+    console.log('  Sign String:', JSON.stringify(signString));
+    console.log('  Client ID:', clientId);
+    console.log('  Access Token:', accessToken || '(empty)');
+    console.log('  Timestamp:', timestamp);
+    console.log('  Nonce:', nonce);
+    
+    const signature = crypto.createHmac('sha256', secret)
+                           .update(signString, 'utf8')
+                           .digest('hex')
+                           .toUpperCase();
+    
+    console.log('  Final Signature:', signature);
+    console.log('  Secret Used:', secret.substring(0, 8) + '...');
+    
+    return signature;
 }
 
-function generateSignatureV3(clientId, secret, timestamp, nonce, method, path, body = '', accessToken = '') {
-    // Version complète selon doc récente
-    const bodyHash = crypto.createHash('sha256').update(body, 'utf8').digest('hex');
-    const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + path;
-    const str = clientId + accessToken + timestamp + nonce + stringToSign;
-    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
-}
-
-function testCredentials() {
-    // Test simple de validation des credentials
-    const timestamp = '1641899085587'; // Timestamp fixe pour test
-    const nonce = 'test123';
-    const method = 'GET';
-    const path = '/v1.0/token?grant_type=1';
-    
-    console.log('🔍 === CREDENTIALS TEST ===');
-    console.log('🔍 ACCESS_ID:', TUYA_CONFIG.ACCESS_ID);
-    console.log('🔍 SECRET (first 8):', TUYA_CONFIG.SECRET.substring(0, 8) + '...');
-    console.log('🔍 BASE_URL:', TUYA_CONFIG.BASE_URL);
-    console.log('🔍 Timestamp:', timestamp);
-    console.log('🔍 Nonce:', nonce);
-    
-    const sig1 = generateSignatureV1(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path);
-    const sig2 = generateSignatureV2(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path, '');
-    const sig3 = generateSignatureV3(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path, '', '');
-    
-    console.log('🔍 Signature V1:', sig1);
-    console.log('🔍 Signature V2:', sig2);
-    console.log('🔍 Signature V3:', sig3);
-    
-    return { sig1, sig2, sig3, timestamp, nonce };
-}
-
-function callTuyaTest(signature, timestamp, nonce) {
+function testTuyaAPI(config, dataCenter) {
     return new Promise((resolve, reject) => {
+        const timestamp = Date.now().toString();
+        const nonce = Math.random().toString(36).substring(2, 15);
+        const method = 'GET';
+        const path = '/v1.0/token?grant_type=1';
+        
+        console.log(`\n🌐 TESTING ${dataCenter.toUpperCase()} DATA CENTER:`);
+        console.log('  URL:', `https://${DATA_CENTERS[dataCenter]}${path}`);
+        console.log('  Timestamp:', timestamp);
+        console.log('  Nonce:', nonce);
+        
+        const signature = generateCorrectSignature(
+            config.ACCESS_ID, 
+            config.SECRET, 
+            timestamp, 
+            nonce, 
+            method, 
+            path
+        );
+        
         const headers = {
-            'client_id': TUYA_CONFIG.ACCESS_ID,
+            'client_id': config.ACCESS_ID,
             'sign': signature,
             'sign_method': 'HMAC-SHA256',
             't': timestamp,
             'nonce': nonce,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (compatible; TuyaAPI/1.0)'
+            'Content-Type': 'application/json'
         };
         
-        console.log('🌐 Request Headers:', headers);
+        console.log('📤 REQUEST HEADERS:', headers);
         
         const options = {
-            hostname: TUYA_CONFIG.BASE_URL,
+            hostname: DATA_CENTERS[dataCenter],
             port: 443,
-            path: '/v1.0/token?grant_type=1',
-            method: 'GET',
+            path: path,
+            method: method,
             headers: headers,
             timeout: 10000
         };
         
         const req = https.request(options, (res) => {
             let data = '';
+            
+            console.log('📥 RESPONSE STATUS:', res.statusCode);
+            console.log('📥 RESPONSE HEADERS:', res.headers);
+            
             res.on('data', (chunk) => data += chunk);
+            
             res.on('end', () => {
-                console.log('📥 Status:', res.statusCode);
-                console.log('📥 Headers:', res.headers);
-                console.log('📥 Body:', data);
+                console.log('📥 RESPONSE BODY:', data);
                 
                 try {
                     const jsonData = JSON.parse(data);
                     resolve({
+                        dataCenter,
                         status: res.statusCode,
                         headers: res.headers,
                         data: jsonData,
                         success: jsonData.success || false,
-                        error: jsonData.msg || jsonData.error_description
+                        signature: signature,
+                        requestHeaders: headers
                     });
                 } catch (e) {
                     resolve({
+                        dataCenter,
                         status: res.statusCode,
                         headers: res.headers,
                         data: data,
                         success: false,
-                        error: 'Invalid JSON response'
+                        error: 'JSON parse error',
+                        signature: signature,
+                        requestHeaders: headers
                     });
                 }
             });
         });
         
         req.on('error', (error) => {
-            console.error('❌ Request Error:', error);
-            reject(error);
+            console.error(`❌ ${dataCenter} REQUEST ERROR:`, error);
+            resolve({
+                dataCenter,
+                success: false,
+                error: error.message,
+                signature: signature
+            });
         });
         
         req.on('timeout', () => {
-            console.error('❌ Request Timeout');
             req.abort();
-            reject(new Error('Request timeout'));
+            resolve({
+                dataCenter,
+                success: false,
+                error: 'Request timeout',
+                signature: signature
+            });
         });
         
         req.end();
@@ -135,72 +163,69 @@ module.exports = async function handler(req, res) {
         return;
     }
     
-    console.log('🔍 === ADVANCED TUYA DIAGNOSTIC ===');
+    console.log('🔍 === COMPREHENSIVE TUYA TEST ===');
     
     try {
-        // Test 1: Credentials validation
-        const credTest = testCredentials();
+        // Test tous les data centers
+        const results = {};
         
-        // Test 2: Essayer avec différentes signatures
-        console.log('🧪 Testing V2 signature...');
-        const result2 = await callTuyaTest(credTest.sig2, credTest.timestamp, credTest.nonce);
-        
-        if (result2.success) {
-            console.log('✅ V2 Signature worked!');
-            res.json({
-                success: true,
-                data: result2.data,
-                method: 'V2 signature worked',
-                credentials_valid: true
-            });
-            return;
+        for (const dc of ['US', 'EU', 'CN']) {
+            console.log(`\n🧪 Testing ${dc} data center...`);
+            const result = await testTuyaAPI(TUYA_MAIN_CONFIG, dc);
+            results[dc] = result;
+            
+            // Si on trouve un succès, on s'arrête
+            if (result.success) {
+                console.log(`✅ SUCCESS with ${dc} data center!`);
+                return res.json({
+                    success: true,
+                    workingDataCenter: dc,
+                    data: result.data,
+                    allResults: results
+                });
+            }
         }
         
-        console.log('🧪 Testing V3 signature...');
-        const result3 = await callTuyaTest(credTest.sig3, credTest.timestamp, credTest.nonce);
+        console.log('❌ All data centers failed');
         
-        if (result3.success) {
-            console.log('✅ V3 Signature worked!');
-            res.json({
-                success: true,
-                data: result3.data,
-                method: 'V3 signature worked',
-                credentials_valid: true
-            });
-            return;
+        // Analyse des erreurs
+        const analysis = {
+            commonErrors: [],
+            suggestions: []
+        };
+        
+        // Vérifier les erreurs communes
+        for (const [dc, result] of Object.entries(results)) {
+            if (result.data && result.data.msg) {
+                analysis.commonErrors.push(`${dc}: ${result.data.msg} (${result.data.code})`);
+            }
         }
         
-        // Test 3: Avec timestamp actuel
-        const currentTime = Date.now().toString();
-        const currentNonce = Math.random().toString(36).substring(2, 15);
+        // Suggestions basées sur les erreurs
+        if (analysis.commonErrors.some(err => err.includes('sign invalid'))) {
+            analysis.suggestions.push('Credentials may be expired or project not activated');
+            analysis.suggestions.push('Check Tuya Developer Console project status');
+            analysis.suggestions.push('Verify Access ID and Secret are correct');
+        }
         
-        const currentSig = generateSignatureV2(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, currentTime, currentNonce, 'GET', '/v1.0/token?grant_type=1', '');
+        if (analysis.commonErrors.some(err => err.includes('permission'))) {
+            analysis.suggestions.push('API permissions not granted in Tuya Console');
+        }
         
-        console.log('🧪 Testing with current timestamp...');
-        const currentResult = await callTuyaTest(currentSig, currentTime, currentNonce);
-        
-        // Retourner tous les résultats pour analyse
         res.json({
             success: false,
-            error: 'All signature methods failed',
-            results: {
-                fixed_timestamp: {
-                    v2: result2,
-                    v3: result3
-                },
-                current_timestamp: currentResult
-            },
+            error: 'All data centers failed authentication',
+            results: results,
+            analysis: analysis,
             credentials: {
-                access_id: TUYA_CONFIG.ACCESS_ID,
-                secret_preview: TUYA_CONFIG.SECRET.substring(0, 8) + '...',
-                base_url: TUYA_CONFIG.BASE_URL
-            },
-            signatures: credTest,
-            analysis: 'Check credentials, endpoint, or signature format'
+                access_id: TUYA_MAIN_CONFIG.ACCESS_ID,
+                secret_preview: TUYA_MAIN_CONFIG.SECRET.substring(0, 8) + '...',
+                data_centers_tested: Object.keys(results)
+            }
         });
         
     } catch (error) {
-        console.error('❌ Handler Error:', error);
+        console.error('❌ HANDLER ERROR:', error);
         res.status(500).json({
             success: false,
             error: error.message,
