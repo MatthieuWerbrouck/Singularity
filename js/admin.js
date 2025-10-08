@@ -1055,6 +1055,251 @@ class AdminManager {
         this.showEditRoleModal(role);
     }
 
+    showEditRoleModal(role) {
+        this.currentEditRole = role;
+        this.createModal('editRole', `Éditer le rôle: ${role.display_name}`, this.renderEditRoleForm(role), {
+            primaryButton: {
+                text: 'Sauvegarder les modifications',
+                action: () => this.updateRole()
+            },
+            secondaryButton: {
+                text: 'Annuler',
+                action: () => this.hideModal()
+            }
+        });
+    }
+
+    renderEditRoleForm(role) {
+        const isSystemRole = ['super_admin', 'admin', 'user'].includes(role.name);
+        const userCount = this.users.filter(u => u.roles?.id === role.id).length;
+
+        return `
+            <form id="editRoleForm">
+                ${isSystemRole ? `
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                        <div style="color: #92400e; font-weight: 600; margin-bottom: 5px;">⚠️ Rôle système</div>
+                        <small style="color: #92400e; font-size: 12px;">Ce rôle est protégé. Certaines modifications peuvent être restreintes.</small>
+                    </div>
+                ` : ''}
+
+                <div class="form-group">
+                    <label class="form-label">Nom technique du rôle</label>
+                    <div style="padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #64748b; font-family: monospace;">
+                        ${role.name}
+                    </div>
+                    <small style="color: #6b7280; font-size: 12px;">Le nom technique ne peut pas être modifié pour préserver l'intégrité des données</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editRoleDisplayName">Nom d'affichage *</label>
+                    <input type="text" id="editRoleDisplayName" class="form-input" value="${role.display_name}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editRoleDescription">Description</label>
+                    <textarea id="editRoleDescription" class="form-input" rows="3">${role.description || ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="editRoleLevel">Niveau de permission *</label>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <input type="range" id="editRoleLevel" min="1" max="89" value="${role.level}" style="flex: 1;" 
+                               ${isSystemRole ? 'disabled' : ''} oninput="updateEditLevelDisplay()">
+                        <div style="min-width: 80px; text-align: center; font-weight: 600; color: #3b82f6;">
+                            <span id="editLevelValue">${role.level}</span>/100
+                        </div>
+                    </div>
+                    <div id="editLevelDescription" style="margin-top: 8px; padding: 8px 12px; background: #f1f5f9; border-radius: 6px; font-size: 12px; color: #64748b;">
+                        ${this.getRoleLevelLabel(role.level)}
+                    </div>
+                    ${isSystemRole ? `<small style="color: #f59e0b; font-size: 12px;">Niveau verrouillé pour les rôles système</small>` : ''}
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label class="form-label" for="editRoleColor">Couleur du rôle *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="editRoleColor" value="${role.color}" style="width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;">
+                            <input type="text" id="editRoleColorText" class="form-input" value="${role.color}" style="flex: 1;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="editRoleIcon">Icône du rôle *</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div id="editIconPreview" style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                                ${role.icon}
+                            </div>
+                            <input type="text" id="editRoleIcon" class="form-input" value="${role.icon}" maxlength="2" style="flex: 1;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="editRoleIsActive" ${role.is_active ? 'checked' : ''} ${isSystemRole ? 'disabled' : ''}>
+                        <label for="editRoleIsActive">Rôle actif</label>
+                    </div>
+                    ${isSystemRole ? `<small style="color: #f59e0b; font-size: 12px;">Statut verrouillé pour les rôles système</small>` : ''}
+                </div>
+
+                <!-- Informations sur l'utilisation -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 14px;">📊 Statistiques d'utilisation</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 12px;">
+                        <div><strong>Utilisateurs assignés:</strong> ${userCount}</div>
+                        <div><strong>Créé le:</strong> ${new Date(role.created_at).toLocaleDateString('fr-FR')}</div>
+                        <div><strong>ID du rôle:</strong> ${role.id}</div>
+                        <div><strong>Type:</strong> ${isSystemRole ? 'Système' : 'Personnalisé'}</div>
+                    </div>
+                </div>
+
+                <!-- Aperçu -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 14px;">🎯 Aperçu du rôle</h4>
+                    <div id="editRolePreview">
+                        ${this.renderRolePreview(role)}
+                    </div>
+                </div>
+
+                <script>
+                    function updateEditLevelDisplay() {
+                        const level = document.getElementById('editRoleLevel').value;
+                        const levelValue = document.getElementById('editLevelValue');
+                        const levelDescription = document.getElementById('editLevelDescription');
+                        
+                        levelValue.textContent = level;
+                        levelDescription.textContent = window.adminManager.getRoleLevelLabel(level);
+                        updateEditRolePreview();
+                    }
+                    
+                    function updateEditRolePreview() {
+                        const displayName = document.getElementById('editRoleDisplayName').value;
+                        const level = document.getElementById('editRoleLevel').value;
+                        const color = document.getElementById('editRoleColor').value;
+                        const icon = document.getElementById('editRoleIcon').value;
+                        
+                        const preview = document.getElementById('editRolePreview');
+                        const iconPreview = document.getElementById('editIconPreview');
+                        
+                        iconPreview.textContent = icon;
+                        
+                        preview.innerHTML = \`
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; background: \${color}20; border: 2px solid \${color}40; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                                    \${icon}
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: \${color};">\${displayName}</div>
+                                    <div style="font-size: 12px; color: #64748b;">${role.name} • Niveau \${level}/100</div>
+                                </div>
+                                <div style="background: \${color}20; color: \${color}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                    \${window.adminManager.getRoleLevelLabel(level)}
+                                </div>
+                            </div>
+                        \`;
+                    }
+                    
+                    // Event listeners
+                    ['editRoleDisplayName', 'editRoleColor', 'editRoleIcon'].forEach(id => {
+                        document.getElementById(id)?.addEventListener('input', updateEditRolePreview);
+                    });
+                    
+                    // Synchroniser color picker et text input
+                    document.getElementById('editRoleColor').addEventListener('input', (e) => {
+                        document.getElementById('editRoleColorText').value = e.target.value;
+                        updateEditRolePreview();
+                    });
+                    
+                    document.getElementById('editRoleColorText').addEventListener('input', (e) => {
+                        if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                            document.getElementById('editRoleColor').value = e.target.value;
+                            updateEditRolePreview();
+                        }
+                    });
+                    
+                    // Initialiser
+                    updateEditRolePreview();
+                </script>
+            </form>
+        `;
+    }
+
+    renderRolePreview(role) {
+        return `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; background: ${role.color}20; border: 2px solid ${role.color}40; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                    ${role.icon}
+                </div>
+                <div>
+                    <div style="font-weight: 600; color: ${role.color};">${role.display_name}</div>
+                    <div style="font-size: 12px; color: #64748b;">${role.name} • Niveau ${role.level}/100</div>
+                </div>
+                <div style="background: ${role.color}20; color: ${role.color}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                    ${this.getRoleLevelLabel(role.level)}
+                </div>
+            </div>
+        `;
+    }
+
+    async updateRole() {
+        const role = this.currentEditRole;
+        if (!role) {
+            this.showError('Erreur: rôle non défini');
+            return;
+        }
+
+        const isSystemRole = ['super_admin', 'admin', 'user'].includes(role.name);
+
+        const formData = {
+            displayName: document.getElementById('editRoleDisplayName')?.value,
+            description: document.getElementById('editRoleDescription')?.value,
+            level: isSystemRole ? role.level : parseInt(document.getElementById('editRoleLevel')?.value),
+            color: document.getElementById('editRoleColor')?.value,
+            icon: document.getElementById('editRoleIcon')?.value,
+            isActive: isSystemRole ? role.is_active : document.getElementById('editRoleIsActive')?.checked
+        };
+
+        console.log('Modification rôle:', { roleId: role.id, formData });
+
+        try {
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Sauvegarde en cours...';
+            }
+
+            const { error } = await this.supabase
+                .from('roles')
+                .update({
+                    display_name: formData.displayName,
+                    description: formData.description,
+                    level: formData.level,
+                    color: formData.color,
+                    icon: formData.icon,
+                    is_active: formData.isActive,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', role.id);
+
+            if (error) throw error;
+
+            await this.refreshData();
+            this.hideModal();
+            this.showSuccess(`Rôle "${formData.displayName}" modifié avec succès !`);
+
+        } catch (error) {
+            console.error('Erreur modification rôle:', error);
+            this.showError(`Erreur lors de la modification : ${error.message}`);
+
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Sauvegarder les modifications';
+            }
+        }
+    }
+
     async toggleRoleStatus(roleId, currentStatus) {
         const role = this.roles.find(r => r.id === roleId);
         if (!role) {
