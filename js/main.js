@@ -1,5 +1,5 @@
 import { initSupabase, authManager } from './auth.js';
-import { APP_CONFIG } from './config.js';
+import { APP_CONFIG, SUPABASE_CONFIG } from './config.js';
 import { AdminManager } from './admin.js';
 
 // Vérification des accès administrateur
@@ -278,8 +278,14 @@ async function initAdminModule() {
     
     try {
         // Vérifier si Supabase est configuré
-        const supabaseConfigured = APP_CONFIG.supabase && 
-                                 APP_CONFIG.supabase.url !== 'YOUR_SUPABASE_URL';
+        console.log('🔍 Configuration Supabase:', SUPABASE_CONFIG);
+        const supabaseConfigured = SUPABASE_CONFIG && 
+                                 SUPABASE_CONFIG.url !== 'YOUR_SUPABASE_URL' &&
+                                 SUPABASE_CONFIG.url !== '' &&
+                                 SUPABASE_CONFIG.anonKey !== 'YOUR_SUPABASE_ANON_KEY' &&
+                                 SUPABASE_CONFIG.anonKey !== '';
+        
+        console.log('✅ Supabase configuré?', supabaseConfigured);
         
         if (!supabaseConfigured) {
             // Mode démo - créer un panel admin simplifié
