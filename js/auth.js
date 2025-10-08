@@ -68,7 +68,22 @@ export class AuthManager {
             password
         });
 
-        if (error) throw error;
+        if (error) {
+            // Améliorer les messages d'erreur pour l'utilisateur
+            let userMessage = error.message;
+            
+            if (error.message.includes('Invalid login credentials')) {
+                userMessage = 'Email ou mot de passe incorrect. Vérifiez vos identifiants ou créez un nouveau compte.';
+            } else if (error.message.includes('Email not confirmed')) {
+                userMessage = 'Email non confirmé. Vérifiez votre boîte mail et cliquez sur le lien de confirmation.';
+            } else if (error.message.includes('Too many requests')) {
+                userMessage = 'Trop de tentatives de connexion. Veuillez patienter quelques minutes.';
+            }
+            
+            const enhancedError = new Error(userMessage);
+            enhancedError.originalError = error;
+            throw enhancedError;
+        }
         return data;
     }
 
