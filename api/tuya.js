@@ -1,59 +1,62 @@
-// Test simple pour vérifier les credentials Tuya
+// Test avancé credentials et endpoints Tuya
 const crypto = require('crypto');
 const https = require('https');
 
-// Test avec différentes méthodes de signature
 const TUYA_CONFIG = {
     ACCESS_ID: 'gmxydg3hn4fgxkkxgkjw',
     SECRET: '2d58fdf6bf474081b168e9114435ab8d',
     BASE_URL: 'openapi.tuyaus.com'
 };
 
-function testSignatureMethod1(clientId, secret, timestamp, nonce, method, path) {
-    // Méthode 1: Simple concatenation
-    const stringToSign = clientId + timestamp + nonce + method + path;
-    const signature = crypto.createHmac('sha256', secret).update(stringToSign, 'utf8').digest('hex').toUpperCase();
-    
-    console.log('🧪 Method 1:');
-    console.log('  String:', stringToSign);
-    console.log('  Signature:', signature);
-    
-    return signature;
+// Test de validation des credentials avec différents formats
+function generateSignatureV1(clientId, secret, timestamp, nonce, method, path) {
+    // Version basique selon certains exemples
+    const str = clientId + timestamp + nonce + method + path;
+    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
 }
 
-function testSignatureMethod2(clientId, secret, timestamp, nonce, method, path) {
-    // Méthode 2: Avec hash du body vide
-    const bodyHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
+function generateSignatureV2(clientId, secret, timestamp, nonce, method, path, body = '') {
+    // Version avec body hash (plus commune)
+    const bodyHash = crypto.createHash('sha256').update(body, 'utf8').digest('hex');
     const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + path;
-    const signStr = clientId + timestamp + nonce + stringToSign;
-    const signature = crypto.createHmac('sha256', secret).update(signStr, 'utf8').digest('hex').toUpperCase();
-    
-    console.log('🧪 Method 2:');
-    console.log('  Body Hash:', bodyHash);
-    console.log('  String to Sign:', stringToSign);
-    console.log('  Sign String:', signStr);
-    console.log('  Signature:', signature);
-    
-    return signature;
+    const str = clientId + timestamp + nonce + stringToSign;
+    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
 }
 
-function testSignatureMethod3(clientId, secret, timestamp, nonce, method, path) {
-    // Méthode 3: Selon nouvelle doc Tuya
-    const bodyHash = crypto.createHash('sha256').update('', 'utf8').digest('hex');
-    const stringToSign = method.toUpperCase() + '\n' + bodyHash + '\n' + '\n' + path;
-    const signStr = clientId + '' + timestamp + nonce + stringToSign; // access_token vide pour auth
-    const signature = crypto.createHmac('sha256', secret).update(signStr, 'utf8').digest('hex').toUpperCase();
-    
-    console.log('🧪 Method 3:');
-    console.log('  Body Hash:', bodyHash);
-    console.log('  String to Sign:', stringToSign);
-    console.log('  Sign String:', signStr);
-    console.log('  Signature:', signature);
-    
-    return signature;
+function generateSignatureV3(clientId, secret, timestamp, nonce, method, path, body = '', accessToken = '') {
+    // Version complète selon doc récente
+    const bodyHash = crypto.createHash('sha256').update(body, 'utf8').digest('hex');
+    const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + path;
+    const str = clientId + accessToken + timestamp + nonce + stringToSign;
+    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
 }
 
-function callTuyaWithMethod(method, signature, timestamp, nonce) {
+function testCredentials() {
+    // Test simple de validation des credentials
+    const timestamp = '1641899085587'; // Timestamp fixe pour test
+    const nonce = 'test123';
+    const method = 'GET';
+    const path = '/v1.0/token?grant_type=1';
+    
+    console.log('🔍 === CREDENTIALS TEST ===');
+    console.log('🔍 ACCESS_ID:', TUYA_CONFIG.ACCESS_ID);
+    console.log('🔍 SECRET (first 8):', TUYA_CONFIG.SECRET.substring(0, 8) + '...');
+    console.log('🔍 BASE_URL:', TUYA_CONFIG.BASE_URL);
+    console.log('🔍 Timestamp:', timestamp);
+    console.log('🔍 Nonce:', nonce);
+    
+    const sig1 = generateSignatureV1(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path);
+    const sig2 = generateSignatureV2(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path, '');
+    const sig3 = generateSignatureV3(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path, '', '');
+    
+    console.log('🔍 Signature V1:', sig1);
+    console.log('🔍 Signature V2:', sig2);
+    console.log('🔍 Signature V3:', sig3);
+    
+    return { sig1, sig2, sig3, timestamp, nonce };
+}
+
+function callTuyaTest(signature, timestamp, nonce) {
     return new Promise((resolve, reject) => {
         const headers = {
             'client_id': TUYA_CONFIG.ACCESS_ID,
@@ -61,34 +64,61 @@ function callTuyaWithMethod(method, signature, timestamp, nonce) {
             'sign_method': 'HMAC-SHA256',
             't': timestamp,
             'nonce': nonce,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (compatible; TuyaAPI/1.0)'
         };
+        
+        console.log('🌐 Request Headers:', headers);
         
         const options = {
             hostname: TUYA_CONFIG.BASE_URL,
             port: 443,
             path: '/v1.0/token?grant_type=1',
             method: 'GET',
-            headers: headers
+            headers: headers,
+            timeout: 10000
         };
-        
-        console.log('🌐 Testing with headers:', headers);
         
         const req = https.request(options, (res) => {
             let data = '';
             res.on('data', (chunk) => data += chunk);
             res.on('end', () => {
-                console.log('📥 Response:', res.statusCode, data);
+                console.log('📥 Status:', res.statusCode);
+                console.log('📥 Headers:', res.headers);
+                console.log('📥 Body:', data);
+                
                 try {
                     const jsonData = JSON.parse(data);
-                    resolve({ status: res.statusCode, data: jsonData });
+                    resolve({
+                        status: res.statusCode,
+                        headers: res.headers,
+                        data: jsonData,
+                        success: jsonData.success || false,
+                        error: jsonData.msg || jsonData.error_description
+                    });
                 } catch (e) {
-                    resolve({ status: res.statusCode, data: data });
+                    resolve({
+                        status: res.statusCode,
+                        headers: res.headers,
+                        data: data,
+                        success: false,
+                        error: 'Invalid JSON response'
+                    });
                 }
             });
         });
         
-        req.on('error', reject);
+        req.on('error', (error) => {
+            console.error('❌ Request Error:', error);
+            reject(error);
+        });
+        
+        req.on('timeout', () => {
+            console.error('❌ Request Timeout');
+            req.abort();
+            reject(new Error('Request timeout'));
+        });
+        
         req.end();
     });
 }
@@ -105,51 +135,76 @@ module.exports = async function handler(req, res) {
         return;
     }
     
-    console.log('🔍 === SIGNATURE TESTING ===');
+    console.log('🔍 === ADVANCED TUYA DIAGNOSTIC ===');
     
     try {
-        const timestamp = Date.now().toString();
-        const nonce = Math.random().toString(36).substring(2, 15);
-        const method = 'GET';
-        const path = '/v1.0/token?grant_type=1';
+        // Test 1: Credentials validation
+        const credTest = testCredentials();
         
-        console.log('🔍 Testing params:', { timestamp, nonce, method, path });
+        // Test 2: Essayer avec différentes signatures
+        console.log('🧪 Testing V2 signature...');
+        const result2 = await callTuyaTest(credTest.sig2, credTest.timestamp, credTest.nonce);
         
-        // Test les 3 méthodes
-        const sig1 = testSignatureMethod1(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path);
-        const sig2 = testSignatureMethod2(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path);
-        const sig3 = testSignatureMethod3(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, timestamp, nonce, method, path);
-        
-        // Test avec méthode 3 (la plus probable)
-        console.log('🧪 Testing Method 3...');
-        const result = await callTuyaWithMethod(method, sig3, timestamp, nonce);
-        
-        console.log('🧪 Final Result:', result);
-        
-        if (result.data && result.data.success) {
+        if (result2.success) {
+            console.log('✅ V2 Signature worked!');
             res.json({
                 success: true,
-                data: result.data.result,
-                method: 'Method 3 worked!',
-                signatures: { sig1, sig2, sig3 }
+                data: result2.data,
+                method: 'V2 signature worked',
+                credentials_valid: true
             });
-        } else {
-            res.json({
-                success: false,
-                error: result.data?.msg || 'Test failed',
-                code: result.data?.code,
-                status: result.status,
-                signatures: { sig1, sig2, sig3 },
-                method: 'All methods tested'
-            });
+            return;
         }
         
+        console.log('🧪 Testing V3 signature...');
+        const result3 = await callTuyaTest(credTest.sig3, credTest.timestamp, credTest.nonce);
+        
+        if (result3.success) {
+            console.log('✅ V3 Signature worked!');
+            res.json({
+                success: true,
+                data: result3.data,
+                method: 'V3 signature worked',
+                credentials_valid: true
+            });
+            return;
+        }
+        
+        // Test 3: Avec timestamp actuel
+        const currentTime = Date.now().toString();
+        const currentNonce = Math.random().toString(36).substring(2, 15);
+        
+        const currentSig = generateSignatureV2(TUYA_CONFIG.ACCESS_ID, TUYA_CONFIG.SECRET, currentTime, currentNonce, 'GET', '/v1.0/token?grant_type=1', '');
+        
+        console.log('🧪 Testing with current timestamp...');
+        const currentResult = await callTuyaTest(currentSig, currentTime, currentNonce);
+        
+        // Retourner tous les résultats pour analyse
+        res.json({
+            success: false,
+            error: 'All signature methods failed',
+            results: {
+                fixed_timestamp: {
+                    v2: result2,
+                    v3: result3
+                },
+                current_timestamp: currentResult
+            },
+            credentials: {
+                access_id: TUYA_CONFIG.ACCESS_ID,
+                secret_preview: TUYA_CONFIG.SECRET.substring(0, 8) + '...',
+                base_url: TUYA_CONFIG.BASE_URL
+            },
+            signatures: credTest,
+            analysis: 'Check credentials, endpoint, or signature format'
+        });
+        
     } catch (error) {
-        console.error('❌ Test Error:', error);
+        console.error('❌ Handler Error:', error);
         res.status(500).json({
             success: false,
             error: error.message,
-            details: 'Signature test failed'
+            stack: error.stack
         });
     }
 };
