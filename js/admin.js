@@ -338,6 +338,8 @@ class AdminManager {
                 break;
             case 'permissions':
                 content.innerHTML = this.renderPermissionsTab();
+                // Setup event listeners pour les permissions
+                this.setupPermissionEventListeners();
                 break;
         }
     }
@@ -532,9 +534,266 @@ class AdminManager {
     }
 
     renderPermissionsTab() {
-        return `<div style="padding: 20px; text-align: center; color: #64748b;">
-            🚧 Gestion des permissions - En développement
-        </div>`;
+        return `
+            <div id="permissionsContent" class="admin-tab-content">
+                <!-- Header avec informations -->
+                <div style="background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%); color: white; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 24px;">🔐 Gestion des Permissions</h3>
+                            <p style="margin: 5px 0 0 0; opacity: 0.9;">Configurez les permissions granulaires par rôle et module</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700;">${this.getPermissionStats().totalPermissions}</div>
+                            <div style="font-size: 12px; opacity: 0.9;">Permissions définies</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sélecteur de rôle -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+                        <h4 style="margin: 0; color: #1e293b;">🎯 Sélectionnez un rôle à configurer :</h4>
+                        <select id="rolePermissionSelect" style="padding: 10px 15px; border: 2px solid #e2e8f0; border-radius: 8px; font-weight: 600; min-width: 200px; background: white;">
+                            <option value="">Choisir un rôle...</option>
+                            ${this.roles.map(role => `
+                                <option value="${role.id}" data-level="${role.level}">
+                                    ${role.icon} ${role.display_name} (Niveau ${role.level})
+                                </option>
+                            `).join('')}
+                        </select>
+                        <button id="resetPermissionsBtn" style="background: #f59e0b; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" disabled>
+                            🔄 Réinitialiser aux valeurs par défaut
+                        </button>
+                    </div>
+
+                    <div id="selectedRoleInfo" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
+                        <!-- Informations du rôle sélectionné -->
+                    </div>
+                </div>
+
+                <!-- Configuration des permissions -->
+                <div id="permissionsConfiguration" style="display: none;">
+                    ${this.renderPermissionModules()}
+                </div>
+
+                <!-- Aperçu des permissions effectives -->
+                <div id="effectivePermissions" style="display: none; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin-top: 30px;">
+                    <h4 style="margin: 0 0 20px 0; color: #1e293b;">📋 Résumé des Permissions Effectives</h4>
+                    <div id="permissionsSummary">
+                        <!-- Résumé généré dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getPermissionStats() {
+        // Compter les permissions définies dans le système
+        const modules = this.getPermissionModules();
+        let totalPermissions = 0;
+        
+        modules.forEach(module => {
+            totalPermissions += module.permissions.length;
+        });
+
+        return {
+            totalPermissions,
+            moduleCount: modules.length
+        };
+    }
+
+    getPermissionModules() {
+        // Définition des modules de permissions du système
+        return [
+            {
+                name: 'user_management',
+                display_name: 'Gestion des Utilisateurs',
+                icon: '👥',
+                description: 'Permissions liées à la gestion des comptes utilisateurs',
+                permissions: [
+                    { key: 'user.view', name: 'Voir les utilisateurs', description: 'Consulter la liste des utilisateurs' },
+                    { key: 'user.create', name: 'Créer des utilisateurs', description: 'Ajouter de nouveaux comptes utilisateur' },
+                    { key: 'user.edit', name: 'Modifier les utilisateurs', description: 'Éditer les profils et informations utilisateur' },
+                    { key: 'user.delete', name: 'Supprimer les utilisateurs', description: 'Supprimer définitivement des comptes' },
+                    { key: 'user.impersonate', name: 'Se connecter en tant que', description: 'Se connecter avec l\'identité d\'un autre utilisateur' }
+                ]
+            },
+            {
+                name: 'role_management',
+                display_name: 'Gestion des Rôles',
+                icon: '🏷️',
+                description: 'Permissions pour la configuration des rôles et hiérarchies',
+                permissions: [
+                    { key: 'role.view', name: 'Voir les rôles', description: 'Consulter les rôles existants' },
+                    { key: 'role.create', name: 'Créer des rôles', description: 'Définir de nouveaux rôles système' },
+                    { key: 'role.edit', name: 'Modifier les rôles', description: 'Éditer les rôles et leurs propriétés' },
+                    { key: 'role.delete', name: 'Supprimer les rôles', description: 'Supprimer des rôles personnalisés' },
+                    { key: 'role.assign', name: 'Assigner des rôles', description: 'Attribuer des rôles aux utilisateurs' }
+                ]
+            },
+            {
+                name: 'permission_management',
+                display_name: 'Gestion des Permissions',
+                icon: '🔐',
+                description: 'Contrôle granulaire des permissions système',
+                permissions: [
+                    { key: 'permission.view', name: 'Voir les permissions', description: 'Consulter la matrice des permissions' },
+                    { key: 'permission.edit', name: 'Modifier les permissions', description: 'Configurer les permissions par rôle' },
+                    { key: 'permission.system', name: 'Permissions système', description: 'Accès aux permissions critiques système' }
+                ]
+            },
+            {
+                name: 'system_admin',
+                display_name: 'Administration Système',
+                icon: '⚙️',
+                description: 'Fonctionnalités d\'administration avancée',
+                permissions: [
+                    { key: 'admin.dashboard', name: 'Panel administrateur', description: 'Accès au tableau de bord admin' },
+                    { key: 'admin.logs', name: 'Voir les logs', description: 'Consulter les journaux système' },
+                    { key: 'admin.settings', name: 'Paramètres système', description: 'Modifier la configuration système' },
+                    { key: 'admin.backup', name: 'Sauvegardes', description: 'Gérer les sauvegardes et restaurations' },
+                    { key: 'admin.maintenance', name: 'Mode maintenance', description: 'Activer/désactiver le mode maintenance' }
+                ]
+            },
+            {
+                name: 'content_management',
+                display_name: 'Gestion de Contenu',
+                icon: '📝',
+                description: 'Permissions pour la création et gestion de contenu',
+                permissions: [
+                    { key: 'content.view', name: 'Voir le contenu', description: 'Consulter le contenu publié' },
+                    { key: 'content.create', name: 'Créer du contenu', description: 'Ajouter du nouveau contenu' },
+                    { key: 'content.edit', name: 'Modifier le contenu', description: 'Éditer le contenu existant' },
+                    { key: 'content.delete', name: 'Supprimer le contenu', description: 'Supprimer définitivement du contenu' },
+                    { key: 'content.publish', name: 'Publier du contenu', description: 'Rendre public du contenu' },
+                    { key: 'content.moderate', name: 'Modérer le contenu', description: 'Approuver/rejeter du contenu utilisateur' }
+                ]
+            },
+            {
+                name: 'reporting',
+                display_name: 'Rapports et Analyses',
+                icon: '📊',
+                description: 'Accès aux données analytiques et rapports',
+                permissions: [
+                    { key: 'report.view', name: 'Voir les rapports', description: 'Consulter les rapports générés' },
+                    { key: 'report.create', name: 'Créer des rapports', description: 'Générer de nouveaux rapports' },
+                    { key: 'report.export', name: 'Exporter les données', description: 'Télécharger les données en différents formats' },
+                    { key: 'analytics.view', name: 'Voir les analyses', description: 'Accès aux tableaux de bord analytiques' }
+                ]
+            }
+        ];
+    }
+
+    renderPermissionModules() {
+        const modules = this.getPermissionModules();
+        
+        return `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                <div style="background: #f8fafc; padding: 20px; border-bottom: 1px solid #e2e8f0;">
+                    <h4 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 10px;">
+                        � Configuration des Permissions
+                        <button id="toggleAllPermissions" style="background: #3b82f6; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: auto;">
+                            🔄 Tout cocher/décocher
+                        </button>
+                    </h4>
+                </div>
+
+                <div id="permissionModulesList">
+                    ${modules.map(module => this.renderPermissionModule(module)).join('')}
+                </div>
+
+                <div style="background: #f8fafc; padding: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
+                    <button id="savePermissionsBtn" style="background: #10b981; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                        💾 Sauvegarder les Permissions
+                    </button>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">Les modifications seront appliquées immédiatement à tous les utilisateurs ayant ce rôle</p>
+                </div>
+            </div>
+        `;
+    }
+
+    renderPermissionModule(module) {
+        return `
+            <div class="permission-module" data-module="${module.name}" style="border-bottom: 1px solid #f1f5f9;">
+                <!-- Header du module -->
+                <div style="background: linear-gradient(90deg, ${this.getModuleColor(module.name)}10 0%, transparent 100%); padding: 20px; cursor: pointer;" 
+                     onclick="togglePermissionModule('${module.name}')">
+                    <div style="display: flex; align-items: center; justify-content: between;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+                            <div style="width: 50px; height: 50px; background: ${this.getModuleColor(module.name)}20; border: 2px solid ${this.getModuleColor(module.name)}40; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                                ${module.icon}
+                            </div>
+                            <div>
+                                <h5 style="margin: 0; font-size: 16px; font-weight: 600; color: #1e293b;">${module.display_name}</h5>
+                                <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b;">${module.description}</p>
+                                <div style="margin: 8px 0 0 0; font-size: 11px; color: #94a3b8;">
+                                    ${module.permissions.length} permission${module.permissions.length > 1 ? 's' : ''} disponible${module.permissions.length > 1 ? 's' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="module-permission-count" style="background: ${this.getModuleColor(module.name)}20; color: ${this.getModuleColor(module.name)}; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                <span id="count-${module.name}">0</span>/${module.permissions.length}
+                            </div>
+                            <div class="module-toggle-icon" style="font-size: 16px; color: #94a3b8;">▼</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des permissions -->
+                <div id="permissions-${module.name}" class="permission-list" style="display: none; padding: 0 20px 20px 20px;">
+                    <div style="display: grid; gap: 10px;">
+                        ${module.permissions.map(permission => this.renderPermissionItem(module.name, permission)).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    renderPermissionItem(moduleName, permission) {
+        return `
+            <div class="permission-item" data-permission="${permission.key}" 
+                 style="display: flex; align-items: center; gap: 15px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; transition: all 0.2s ease;"
+                 onmouseover="this.style.background='#f1f5f9'; this.style.borderColor='#d1d5db'"
+                 onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#e2e8f0'">
+                
+                <div class="permission-checkbox">
+                    <input type="checkbox" id="perm-${permission.key}" value="${permission.key}" 
+                           style="width: 18px; height: 18px; cursor: pointer;" 
+                           onchange="updatePermissionCount('${moduleName}')">
+                </div>
+                
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label for="perm-${permission.key}" style="font-weight: 600; color: #1e293b; cursor: pointer; flex: 1;">
+                            ${permission.name}
+                        </label>
+                        <code style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 10px;">
+                            ${permission.key}
+                        </code>
+                    </div>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #6b7280;">
+                        ${permission.description}
+                    </p>
+                </div>
+
+                <div class="permission-level-indicator" style="width: 8px; height: 8px; border-radius: 50%; background: #d1d5db;" 
+                     title="Permission non accordée"></div>
+            </div>
+        `;
+    }
+
+    getModuleColor(moduleName) {
+        const colors = {
+            'user_management': '#3b82f6',
+            'role_management': '#8b5cf6',
+            'permission_management': '#06b6d4',
+            'system_admin': '#ef4444',
+            'content_management': '#10b981',
+            'reporting': '#f59e0b'
+        };
+        return colors[moduleName] || '#6b7280';
     }
 
     async refreshData() {
@@ -921,6 +1180,443 @@ class AdminManager {
             if (btn) {
                 btn.disabled = false;
                 btn.textContent = '🗑️ Supprimer définitivement';
+            }
+        }
+    }
+
+    // === GESTION DES PERMISSIONS ===
+
+    setupPermissionEventListeners() {
+        // Sélecteur de rôle
+        document.getElementById('rolePermissionSelect')?.addEventListener('change', (e) => {
+            const roleId = e.target.value;
+            if (roleId) {
+                this.loadRolePermissions(roleId);
+            } else {
+                this.hidePermissionConfiguration();
+            }
+        });
+
+        // Bouton réinitialiser
+        document.getElementById('resetPermissionsBtn')?.addEventListener('click', () => {
+            this.resetToDefaultPermissions();
+        });
+
+        // Bouton tout cocher/décocher
+        document.getElementById('toggleAllPermissions')?.addEventListener('click', () => {
+            this.toggleAllPermissions();
+        });
+
+        // Bouton sauvegarder
+        document.getElementById('savePermissionsBtn')?.addEventListener('click', () => {
+            this.saveRolePermissions();
+        });
+
+        // Rendre les fonctions accessibles globalement pour les événements inline
+        window.togglePermissionModule = this.togglePermissionModule.bind(this);
+        window.updatePermissionCount = this.updatePermissionCount.bind(this);
+    }
+
+    async loadRolePermissions(roleId) {
+        try {
+            const role = this.roles.find(r => r.id === roleId);
+            if (!role) return;
+
+            // Afficher les informations du rôle sélectionné
+            const roleInfo = document.getElementById('selectedRoleInfo');
+            if (roleInfo) {
+                roleInfo.style.display = 'block';
+                roleInfo.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="width: 50px; height: 50px; background: ${role.color}20; border: 2px solid ${role.color}40; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                            ${role.icon}
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0; color: ${role.color}; font-size: 18px;">${role.display_name}</h4>
+                            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 13px;">${role.description || 'Aucune description'}</p>
+                            <div style="margin: 8px 0 0 0;">
+                                <span style="background: ${role.color}20; color: ${role.color}; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                    Niveau ${role.level}/100 - ${this.getRoleLevelLabel(role.level)}
+                                </span>
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 16px; font-weight: 700; color: #1e293b;">
+                                ${this.users.filter(u => u.roles?.id === roleId).length}
+                            </div>
+                            <div style="font-size: 11px; color: #64748b;">utilisateur(s)</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Charger les permissions existantes pour ce rôle
+            await this.loadExistingPermissions(roleId);
+
+            // Afficher la configuration
+            const permissionsConfig = document.getElementById('permissionsConfiguration');
+            const effectivePerms = document.getElementById('effectivePermissions');
+            if (permissionsConfig) permissionsConfig.style.display = 'block';
+            if (effectivePerms) effectivePerms.style.display = 'block';
+
+            // Activer le bouton reset
+            const resetBtn = document.getElementById('resetPermissionsBtn');
+            if (resetBtn) resetBtn.disabled = false;
+
+            // Mettre à jour les compteurs
+            this.updateAllPermissionCounts();
+            this.updatePermissionsSummary();
+
+        } catch (error) {
+            console.error('Erreur chargement permissions rôle:', error);
+            this.showError('Erreur lors du chargement des permissions');
+        }
+    }
+
+    async loadExistingPermissions(roleId) {
+        try {
+            // TODO: Charger les permissions depuis la base de données
+            // Pour le moment, nous utilisons les permissions par défaut basées sur le niveau du rôle
+            const role = this.roles.find(r => r.id === roleId);
+            if (!role) return;
+
+            const defaultPermissions = this.getDefaultPermissionsByLevel(role.level);
+            
+            // Cocher les permissions appropriées
+            const checkboxes = document.querySelectorAll('#permissionModulesList input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = defaultPermissions.includes(checkbox.value);
+                this.updatePermissionItemVisual(checkbox);
+            });
+
+        } catch (error) {
+            console.error('Erreur chargement permissions existantes:', error);
+        }
+    }
+
+    getDefaultPermissionsByLevel(level) {
+        // Définir les permissions par défaut selon le niveau du rôle
+        const permissions = [];
+
+        // Permissions de base (niveau 1+)
+        if (level >= 1) {
+            permissions.push('content.view', 'report.view');
+        }
+
+        // Permissions contributeur (niveau 20+)
+        if (level >= 20) {
+            permissions.push('content.create', 'content.edit');
+        }
+
+        // Permissions manager (niveau 40+)
+        if (level >= 40) {
+            permissions.push('content.publish', 'content.moderate', 'user.view', 'report.create');
+        }
+
+        // Permissions modérateur (niveau 60+)
+        if (level >= 60) {
+            permissions.push('user.edit', 'content.delete', 'report.export', 'analytics.view');
+        }
+
+        // Permissions administrateur (niveau 80+)
+        if (level >= 80) {
+            permissions.push(
+                'user.create', 'user.delete', 'user.impersonate',
+                'role.view', 'role.create', 'role.edit', 'role.delete', 'role.assign',
+                'permission.view', 'permission.edit',
+                'admin.dashboard', 'admin.logs', 'admin.settings'
+            );
+        }
+
+        // Permissions super admin (niveau 90+)
+        if (level >= 90) {
+            permissions.push('permission.system', 'admin.backup', 'admin.maintenance');
+        }
+
+        return permissions;
+    }
+
+    hidePermissionConfiguration() {
+        const roleInfo = document.getElementById('selectedRoleInfo');
+        const permissionsConfig = document.getElementById('permissionsConfiguration');
+        const effectivePerms = document.getElementById('effectivePermissions');
+        const resetBtn = document.getElementById('resetPermissionsBtn');
+
+        if (roleInfo) roleInfo.style.display = 'none';
+        if (permissionsConfig) permissionsConfig.style.display = 'none';
+        if (effectivePerms) effectivePerms.style.display = 'none';
+        if (resetBtn) resetBtn.disabled = true;
+    }
+
+    togglePermissionModule(moduleName) {
+        const permissionList = document.getElementById(`permissions-${moduleName}`);
+        const toggleIcon = document.querySelector(`[data-module="${moduleName}"] .module-toggle-icon`);
+        
+        if (permissionList && toggleIcon) {
+            if (permissionList.style.display === 'none') {
+                permissionList.style.display = 'block';
+                toggleIcon.textContent = '▲';
+            } else {
+                permissionList.style.display = 'none';
+                toggleIcon.textContent = '▼';
+            }
+        }
+    }
+
+    updatePermissionCount(moduleName) {
+        const moduleDiv = document.querySelector(`[data-module="${moduleName}"]`);
+        if (!moduleDiv) return;
+
+        const checkboxes = moduleDiv.querySelectorAll('input[type="checkbox"]');
+        const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+        
+        const countElement = document.getElementById(`count-${moduleName}`);
+        if (countElement) {
+            countElement.textContent = checkedCount;
+        }
+
+        // Mettre à jour l'apparence des items de permission
+        checkboxes.forEach(checkbox => {
+            this.updatePermissionItemVisual(checkbox);
+        });
+
+        // Mettre à jour le résumé
+        this.updatePermissionsSummary();
+    }
+
+    updatePermissionItemVisual(checkbox) {
+        const permissionItem = checkbox.closest('.permission-item');
+        const indicator = permissionItem?.querySelector('.permission-level-indicator');
+        
+        if (indicator) {
+            if (checkbox.checked) {
+                indicator.style.background = '#10b981';
+                indicator.title = 'Permission accordée';
+                permissionItem.style.borderColor = '#10b981';
+                permissionItem.style.background = '#ecfdf5';
+            } else {
+                indicator.style.background = '#d1d5db';
+                indicator.title = 'Permission non accordée';
+                permissionItem.style.borderColor = '#e2e8f0';
+                permissionItem.style.background = '#f8fafc';
+            }
+        }
+    }
+
+    updateAllPermissionCounts() {
+        const modules = this.getPermissionModules();
+        modules.forEach(module => {
+            this.updatePermissionCount(module.name);
+        });
+    }
+
+    toggleAllPermissions() {
+        const checkboxes = document.querySelectorAll('#permissionModulesList input[type="checkbox"]');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = !allChecked;
+            this.updatePermissionItemVisual(checkbox);
+        });
+
+        this.updateAllPermissionCounts();
+        this.updatePermissionsSummary();
+    }
+
+    updatePermissionsSummary() {
+        const summaryDiv = document.getElementById('permissionsSummary');
+        if (!summaryDiv) return;
+
+        const modules = this.getPermissionModules();
+        const checkedPermissions = [];
+        
+        modules.forEach(module => {
+            const moduleDiv = document.querySelector(`[data-module="${module.name}"]`);
+            if (moduleDiv) {
+                const checkboxes = moduleDiv.querySelectorAll('input[type="checkbox"]:checked');
+                checkboxes.forEach(checkbox => {
+                    const permissionKey = checkbox.value;
+                    const permission = module.permissions.find(p => p.key === permissionKey);
+                    if (permission) {
+                        checkedPermissions.push({
+                            module: module.display_name,
+                            moduleIcon: module.icon,
+                            moduleColor: this.getModuleColor(module.name),
+                            ...permission
+                        });
+                    }
+                });
+            }
+        });
+
+        if (checkedPermissions.length === 0) {
+            summaryDiv.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #6b7280; font-style: italic;">
+                    🚫 Aucune permission accordée
+                    <p style="margin: 10px 0 0 0; font-size: 12px;">Sélectionnez des permissions dans les modules ci-dessus</p>
+                </div>
+            `;
+        } else {
+            const groupedByModule = {};
+            checkedPermissions.forEach(perm => {
+                if (!groupedByModule[perm.module]) {
+                    groupedByModule[perm.module] = {
+                        icon: perm.moduleIcon,
+                        color: perm.moduleColor,
+                        permissions: []
+                    };
+                }
+                groupedByModule[perm.module].permissions.push(perm);
+            });
+
+            summaryDiv.innerHTML = `
+                <div style="display: grid; gap: 15px;">
+                    <div style="text-align: center; padding: 10px; background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 8px;">
+                        <span style="font-weight: 700; color: #10b981; font-size: 18px;">${checkedPermissions.length}</span>
+                        <span style="color: #065f46; font-size: 14px; margin-left: 5px;">permission${checkedPermissions.length > 1 ? 's' : ''} accordée${checkedPermissions.length > 1 ? 's' : ''}</span>
+                    </div>
+                    
+                    ${Object.entries(groupedByModule).map(([moduleName, moduleData]) => `
+                        <div style="border: 1px solid ${moduleData.color}30; border-radius: 8px; overflow: hidden;">
+                            <div style="background: ${moduleData.color}10; padding: 12px; border-bottom: 1px solid ${moduleData.color}20;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 16px;">${moduleData.icon}</span>
+                                    <span style="font-weight: 600; color: ${moduleData.color};">${moduleName}</span>
+                                    <span style="background: ${moduleData.color}20; color: ${moduleData.color}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: auto;">
+                                        ${moduleData.permissions.length} permission${moduleData.permissions.length > 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="padding: 10px;">
+                                ${moduleData.permissions.map(perm => `
+                                    <div style="display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px;">
+                                        <div style="width: 6px; height: 6px; background: ${moduleData.color}; border-radius: 50%;"></div>
+                                        <span style="font-weight: 600; color: #1e293b;">${perm.name}</span>
+                                        <code style="background: #f1f5f9; color: #475569; padding: 1px 4px; border-radius: 3px; font-size: 10px;">${perm.key}</code>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    }
+
+    resetToDefaultPermissions() {
+        const roleSelect = document.getElementById('rolePermissionSelect');
+        const roleId = roleSelect?.value;
+        
+        if (!roleId) {
+            this.showWarning('Aucun rôle sélectionné');
+            return;
+        }
+
+        const role = this.roles.find(r => r.id === roleId);
+        if (!role) return;
+
+        // Confirmation
+        this.createModal(
+            'confirmResetPermissions',
+            '🔄 Réinitialiser les permissions',
+            `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🔄</div>
+                    <h3 style="color: #f59e0b; margin-bottom: 15px;">Réinitialiser aux valeurs par défaut ?</h3>
+                    
+                    <div style="background: #fefbf2; border: 1px solid #fed7aa; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 10px;">
+                            <span style="font-size: 18px;">${role.icon}</span>
+                            <strong>${role.display_name}</strong>
+                        </div>
+                        <p style="margin: 0; color: #92400e; font-size: 13px;">
+                            Les permissions seront définies automatiquement selon le niveau ${role.level}/100
+                        </p>
+                    </div>
+                    
+                    <p style="color: #f59e0b; font-weight: 600;">
+                        Cette action écrasera la configuration actuelle des permissions.
+                    </p>
+                </div>
+            `,
+            {
+                primaryButton: {
+                    text: '🔄 Réinitialiser',
+                    action: () => this.executeResetPermissions(role)
+                },
+                secondaryButton: {
+                    text: 'Annuler',
+                    action: () => this.hideModal()
+                }
+            }
+        );
+    }
+
+    executeResetPermissions(role) {
+        try {
+            const defaultPermissions = this.getDefaultPermissionsByLevel(role.level);
+            
+            // Décocher toutes les permissions
+            const checkboxes = document.querySelectorAll('#permissionModulesList input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = defaultPermissions.includes(checkbox.value);
+                this.updatePermissionItemVisual(checkbox);
+            });
+
+            // Mettre à jour les compteurs et le résumé
+            this.updateAllPermissionCounts();
+            this.updatePermissionsSummary();
+
+            this.hideModal();
+            this.showSuccess('Permissions réinitialisées aux valeurs par défaut');
+
+        } catch (error) {
+            console.error('Erreur réinitialisation permissions:', error);
+            this.showError('Erreur lors de la réinitialisation');
+        }
+    }
+
+    async saveRolePermissions() {
+        const roleSelect = document.getElementById('rolePermissionSelect');
+        const roleId = roleSelect?.value;
+        
+        if (!roleId) {
+            this.showWarning('Aucun rôle sélectionné');
+            return;
+        }
+
+        try {
+            // Désactiver le bouton pendant la sauvegarde
+            const saveBtn = document.getElementById('savePermissionsBtn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '💾 Sauvegarde en cours...';
+            }
+
+            // Collecter les permissions cochées
+            const checkedPermissions = [];
+            const checkboxes = document.querySelectorAll('#permissionModulesList input[type="checkbox"]:checked');
+            checkboxes.forEach(checkbox => {
+                checkedPermissions.push(checkbox.value);
+            });
+
+            console.log('Sauvegarde permissions rôle:', { roleId, permissions: checkedPermissions });
+
+            // TODO: Sauvegarder en base de données
+            // Pour le moment, simuler la sauvegarde
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            this.showSuccess(`Permissions sauvegardées pour le rôle (${checkedPermissions.length} permissions)`);
+
+        } catch (error) {
+            console.error('Erreur sauvegarde permissions:', error);
+            this.showError('Erreur lors de la sauvegarde des permissions');
+        } finally {
+            // Réactiver le bouton
+            const saveBtn = document.getElementById('savePermissionsBtn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Sauvegarder les Permissions';
             }
         }
     }
