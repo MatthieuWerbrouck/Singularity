@@ -34,6 +34,12 @@ function setupAuthForms() {
     const switchToLogin = document.getElementById('switchToLogin');
     const logoutBtn = document.getElementById('logoutBtn');
 
+    // Éviter les gestionnaires d'événements multiples
+    if (loginForm.hasAttribute('data-handlers-attached')) {
+        return;
+    }
+    loginForm.setAttribute('data-handlers-attached', 'true');
+
     // Basculer entre connexion et inscription
     switchToRegister.addEventListener('click', () => {
         document.getElementById('loginPage').style.display = 'none';
@@ -195,9 +201,15 @@ async function initAdminModule() {
 function enableDemoMode() {
     console.log('🎭 Mode démo activé - Supabase non configuré');
     
-    // Simuler une connexion en mode demo
+    // Remplacer le gestionnaire de connexion par le mode démo
     const loginForm = document.getElementById('loginForm');
-    loginForm.addEventListener('submit', (e) => {
+    
+    // Supprimer les gestionnaires existants en recréant l'élément
+    const newLoginForm = loginForm.cloneNode(true);
+    loginForm.parentNode.replaceChild(newLoginForm, loginForm);
+    
+    // Ajouter le gestionnaire de mode démo
+    newLoginForm.addEventListener('submit', (e) => {
         e.preventDefault();
         showMessage('Mode démo - Connexion simulée', 'success');
         
@@ -215,9 +227,6 @@ async function initApp() {
         // Initialiser Supabase
         const supabaseInitialized = initSupabase();
         
-        // Initialiser l'authentification
-        await authManager.init();
-        
         // Configurer les formulaires et événements
         setupAuthForms();
         setupDashboard();
@@ -226,6 +235,9 @@ async function initApp() {
         if (!supabaseInitialized) {
             enableDemoMode();
             showMessage('⚠️ Mode démo - Configurez Supabase pour la production', 'error');
+        } else {
+            // Initialiser l'authentification seulement si Supabase est configuré
+            await authManager.init();
         }
         
         console.log('✅ Application initialisée avec succès');
