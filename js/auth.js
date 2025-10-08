@@ -183,6 +183,9 @@ export class AuthManager {
             dashboardPage.style.display = 'block';
             loginBtn.style.display = 'none';
             logoutBtn.style.display = 'block';
+            
+            // Déclencher un événement pour que le dashboard se mette à jour
+            window.dispatchEvent(new CustomEvent('userAuthenticated'));
         } else {
             // Utilisateur non connecté
             loginPage.style.display = 'block';

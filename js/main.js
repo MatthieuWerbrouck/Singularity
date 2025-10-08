@@ -271,3 +271,9 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
     console.error('Promise rejetée:', event.reason);
 });
+
+// Écouter les changements d'authentification pour mettre à jour le dashboard
+window.addEventListener('userAuthenticated', () => {
+    console.log('👤 Utilisateur authentifié - Mise à jour du dashboard');
+    setupDashboard();
+});
