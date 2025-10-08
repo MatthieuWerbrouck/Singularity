@@ -1,5 +1,6 @@
 // Proxy API Vercel pour contourner CORS avec Tuya Smart
-import crypto from 'crypto';
+const crypto = require('crypto');
+const fetch = require('node-fetch');
 
 const TUYA_CONFIG = {
     ACCESS_ID: 'gmxydg3hn4fgxkkxgkjw',
@@ -60,6 +61,8 @@ async function callTuyaAPI(method, endpoint, body = null, accessToken = '') {
     const url = `${TUYA_CONFIG.BASE_URL}${endpoint}`;
     const bodyStr = body ? JSON.stringify(body) : '';
     
+    console.log('🌐 Tuya API Call:', method, endpoint, accessToken ? 'with token' : 'no token');
+    
     const headers = generateHeaders(method, url, bodyStr, accessToken);
     
     const response = await fetch(url, {
@@ -69,6 +72,7 @@ async function callTuyaAPI(method, endpoint, body = null, accessToken = '') {
     });
     
     const data = await response.json();
+    console.log('📥 Tuya Response:', data);
     
     if (!data.success) {
         throw new Error(`Tuya API Error: ${data.msg || 'Unknown error'} (Code: ${data.code})`);
@@ -78,17 +82,19 @@ async function callTuyaAPI(method, endpoint, body = null, accessToken = '') {
 }
 
 // Handler principal de l'API
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, access_token');
     
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
+    
+    console.log('🔍 API Request:', req.method, req.url, req.query);
     
     try {
         const { action, deviceId } = req.query;
@@ -97,6 +103,7 @@ export default async function handler(req, res) {
         switch (action) {
             case 'auth':
                 // Authentification - obtenir le token
+                console.log('🔑 Authentication request');
                 const authData = await callTuyaAPI('GET', '/v1.0/token?grant_type=1');
                 res.json({ 
                     success: true, 
@@ -109,17 +116,19 @@ export default async function handler(req, res) {
                 
             case 'devices':
                 // Lister les appareils
+                console.log('📱 Devices list request');
                 const { access_token } = req.headers;
                 if (!access_token) {
                     return res.status(401).json({ success: false, error: 'Access token required' });
                 }
                 
-                const devices = await callTuyaAPI('GET', '/v1.0/users/devices', null, access_token);
+                const devices = await callTuyaAPI('GET', '/v1.0/users/me/devices', null, access_token);
                 res.json({ success: true, data: devices });
                 break;
                 
             case 'device-status':
                 // Obtenir le statut d'un appareil
+                console.log('📊 Device status request for:', deviceId);
                 const { access_token: token1 } = req.headers;
                 if (!token1 || !deviceId) {
                     return res.status(400).json({ success: false, error: 'Access token and device ID required' });
@@ -131,6 +140,7 @@ export default async function handler(req, res) {
                 
             case 'device-control':
                 // Contrôler un appareil
+                console.log('🎮 Device control request for:', deviceId, commands);
                 const { access_token: token2 } = req.headers;
                 if (!token2 || !deviceId || !commands) {
                     return res.status(400).json({ success: false, error: 'Access token, device ID and commands required' });
@@ -141,15 +151,16 @@ export default async function handler(req, res) {
                 break;
                 
             default:
+                console.log('❌ Invalid action:', action);
                 res.status(400).json({ success: false, error: 'Invalid action' });
         }
         
     } catch (error) {
-        console.error('Tuya Proxy Error:', error);
+        console.error('❌ Tuya Proxy Error:', error);
         res.status(500).json({ 
             success: false, 
             error: error.message,
-            details: error.stack
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
-}
+};

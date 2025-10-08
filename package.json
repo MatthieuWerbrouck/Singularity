@@ -13,7 +13,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0"
+    "@supabase/supabase-js": "^2.38.0",
+    "node-fetch": "^2.6.7"
   },
   "devDependencies": {
     "vercel": "^32.0.0"
