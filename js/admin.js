@@ -407,6 +407,213 @@ class AdminManager {
         
         this.showMessage('Filtres effacés', 'info');
     }
+
+    // === MODAL SYSTEM ===
+    createModal(id, title, content, buttons = {}) {
+        // Supprimer un modal existant s'il y en a un
+        this.hideModal();
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'modal-overlay';
+        modalOverlay.id = `modal-${id}`;
+
+        modalOverlay.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">${title}</h3>
+                    <button class="modal-close" onclick="window.adminManager.hideModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    ${content}
+                </div>
+                ${buttons.primaryButton || buttons.secondaryButton ? `
+                    <div class="modal-footer">
+                        ${buttons.secondaryButton ? `
+                            <button class="btn btn-secondary" onclick="window.adminManager.hideModal()">
+                                ${buttons.secondaryButton.text}
+                            </button>
+                        ` : ''}
+                        ${buttons.primaryButton ? `
+                            <button class="btn btn-primary" id="modal-primary-btn">
+                                ${buttons.primaryButton.text}
+                            </button>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        document.body.appendChild(modalOverlay);
+
+        // Ajouter les event listeners
+        if (buttons.primaryButton) {
+            document.getElementById('modal-primary-btn')?.addEventListener('click', buttons.primaryButton.action);
+        }
+
+        // Fermer modal en cliquant sur l'overlay
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                this.hideModal();
+            }
+        });
+
+        // Afficher modal avec animation
+        setTimeout(() => modalOverlay.classList.add('show'), 10);
+
+        return modalOverlay;
+    }
+
+    hideModal() {
+        const modals = document.querySelectorAll('.modal-overlay');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.parentNode.removeChild(modal);
+                }
+            }, 300);
+        });
+    }
+
+    renderAddUserForm() {
+        return `
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label class="form-label" for="userEmail">Email *</label>
+                    <input type="email" id="userEmail" class="form-input" placeholder="exemple@domaine.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="userPassword">Mot de passe temporaire *</label>
+                    <input type="password" id="userPassword" class="form-input" placeholder="Minimum 8 caractères" required>
+                    <small style="color: #6b7280; font-size: 12px;">L'utilisateur devra changer son mot de passe à la première connexion</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="userFullName">Nom complet</label>
+                    <input type="text" id="userFullName" class="form-input" placeholder="Prénom Nom">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="userRole">Rôle</label>
+                    <select id="userRole" class="form-select">
+                        <option value="">Sélectionner un rôle (optionnel)</option>
+                        ${this.roles.map(role => `
+                            <option value="${role.id}" ${role.name === 'user' ? 'selected' : ''}>
+                                ${role.icon} ${role.display_name} (Niveau ${role.level})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="userStatus">Statut initial</label>
+                    <select id="userStatus" class="form-select">
+                        <option value="active" selected>Actif</option>
+                        <option value="inactive">Inactif</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="userSuperAdmin">
+                        <label for="userSuperAdmin">Super Administrateur</label>
+                    </div>
+                    <small style="color: #ef4444; font-size: 12px;">⚠️ Attention : Les super admins ont tous les droits</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="sendWelcomeEmail" checked>
+                        <label for="sendWelcomeEmail">Envoyer un email de bienvenue</label>
+                    </div>
+                </div>
+            </form>
+        `;
+    }
+
+    async createUser() {
+        const form = document.getElementById('addUserForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const formData = {
+            email: document.getElementById('userEmail').value,
+            password: document.getElementById('userPassword').value,
+            fullName: document.getElementById('userFullName').value,
+            roleId: document.getElementById('userRole').value || null,
+            status: document.getElementById('userStatus').value,
+            isSuperAdmin: document.getElementById('userSuperAdmin').checked,
+            sendWelcomeEmail: document.getElementById('sendWelcomeEmail').checked
+        };
+
+        console.log('Création utilisateur:', formData);
+
+        try {
+            // Désactiver le bouton pendant la création
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Création en cours...';
+            }
+
+            // 1. Créer l'utilisateur avec signUp (l'utilisateur recevra un email de confirmation)
+            const { data: authData, error: authError } = await this.supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.fullName
+                    }
+                }
+            });
+
+            if (authError) throw authError;
+
+            // 2. Créer le profil utilisateur avec les données admin
+            const { error: profileError } = await this.supabase
+                .from('profiles')
+                .upsert({
+                    id: authData.user.id,
+                    email: formData.email,
+                    full_name: formData.fullName,
+                    role_id: formData.roleId,
+                    status: formData.status,
+                    is_super_admin: formData.isSuperAdmin,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }, { 
+                    onConflict: 'id' 
+                });
+
+            if (profileError) throw profileError;
+
+            // 3. Actualiser la liste des utilisateurs
+            await this.refreshData();
+
+            // 4. Fermer modal et afficher succès
+            this.hideModal();
+            this.showSuccess(`Utilisateur ${formData.email} créé avec succès !`);
+
+            // 5. TODO: Envoyer email de bienvenue si demandé
+            if (formData.sendWelcomeEmail) {
+                this.showMessage('Email de bienvenue à implémenter', 'warning');
+            }
+
+        } catch (error) {
+            console.error('Erreur création utilisateur:', error);
+            this.showError(`Erreur lors de la création : ${error.message}`);
+
+            // Réactiver le bouton
+            const btn = document.getElementById('modal-primary-btn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Créer l\'utilisateur';
+            }
+        }
+    }
     
     updateUsersTable(users) {
         const tableBody = document.getElementById('usersTableBody');
@@ -426,8 +633,16 @@ class AdminManager {
     }
 
     showAddUserModal() {
-        // TODO: Implémenter le modal d'ajout d'utilisateur
-        this.showMessage('Modal d\'ajout d\'utilisateur - En développement', 'info');
+        this.createModal('addUser', 'Ajouter un utilisateur', this.renderAddUserForm(), {
+            primaryButton: {
+                text: 'Créer l\'utilisateur',
+                action: () => this.createUser()
+            },
+            secondaryButton: {
+                text: 'Annuler',
+                action: () => this.hideModal()
+            }
+        });
     }
 
     async editUser(userId) {
