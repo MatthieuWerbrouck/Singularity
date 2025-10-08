@@ -195,12 +195,6 @@ export class AuthManager {
 
     // Vérifier si l'utilisateur a accès à l'administration
     async hasAdminAccess() {
-        // Bypass temporaire pour debug - remplacer par votre email
-        if (this.user?.email === 'matthieu@werbrouck.ch') {
-            console.log('🚨 Bypass temporaire pour matthieu@werbrouck.ch');
-            return true;
-        }
-        
         const profile = await this.getUserProfile();
         
         if (!profile) {
@@ -239,7 +233,6 @@ export class AuthManager {
 
         // Si nous ne sommes pas sur la page principale, ne pas modifier l'UI
         if (!loginPage || !dashboardPage) {
-            console.log('🔍 updateUI ignoré - Page sans éléments dashboard');
             return;
         }
 
