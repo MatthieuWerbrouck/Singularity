@@ -138,6 +138,8 @@ class AdminApp {
                 this.showAccessError();
                 return;
             }
+            
+            console.log('✅ Permissions admin confirmées - Chargement du panel...');
 
             // Initialiser le panel admin
             await this.initAdminPanel();
@@ -153,27 +155,53 @@ class AdminApp {
         console.log('🔧 Initialisation du panel admin...');
 
         try {
-            // Créer et initialiser AdminManager
+            console.log('📦 Création de AdminManager...');
             this.adminManager = new AdminManager();
+            
+            console.log('🚀 Initialisation de AdminManager...');
             await this.adminManager.init();
+            console.log('✅ AdminManager initialisé avec succès');
 
-            // Injecter le contenu dans la page
+            // Vérifier les éléments DOM
             const adminContent = document.getElementById('adminContent');
             const adminContainer = document.getElementById('adminContainer');
             
+            console.log('🔍 Éléments DOM trouvés:');
+            console.log('  - adminContent:', !!adminContent);
+            console.log('  - adminContainer:', !!adminContainer);
+            
             if (adminContainer) {
+                console.log('📋 Injection du contenu HTML...');
+                console.log('  - Contenu adminContainer:', adminContainer.innerHTML.length, 'caractères');
                 adminContent.innerHTML = adminContainer.innerHTML;
                 adminContainer.remove();
+                console.log('✅ Contenu injecté et container supprimé');
+            } else {
+                console.warn('⚠️ adminContainer non trouvé - le contenu pourrait ne pas s\'afficher');
             }
 
             // Masquer le loading et afficher le contenu
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('adminContent').style.display = 'block';
+            console.log('🎭 Mise à jour de l\'affichage...');
+            const loadingElement = document.getElementById('loadingState');
+            const contentElement = document.getElementById('adminContent');
+            
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+                console.log('✅ Loading masqué');
+            }
+            
+            if (contentElement) {
+                contentElement.style.display = 'block';
+                console.log('✅ Contenu affiché');
+                console.log('📏 Contenu final:', contentElement.innerHTML.length, 'caractères');
+            }
 
             showToast('Panel d\'administration chargé avec succès', 'success');
+            console.log('🎉 Panel admin complètement initialisé !');
 
         } catch (error) {
             console.error('❌ Erreur panel admin:', error);
+            console.error('📚 Stack trace:', error.stack);
             showToast('Erreur lors du chargement du panel: ' + error.message, 'error');
             this.showAccessError();
         }
