@@ -231,12 +231,8 @@ async function setupDashboard() {
         card.addEventListener('click', () => {
             const title = card.querySelector('h3').textContent;
             
-            // Gestion spécifique pour le module admin
-            if (title.includes('Administration')) {
-                console.log('🎯 Clic sur le bouton Administration détecté');
-                console.log('🎯 Titre de la carte:', title);
-                initAdminModule();
-            } else {
+            // Gestion des autres modules (admin est géré directement dans addAdminCard)
+            if (!title.includes('Administration')) {
                 console.log('🎯 Clic sur autre module:', title);
                 showMessage(`Module "${title}" - À développer prochainement`, 'info');
             }
@@ -265,8 +261,8 @@ function addAdminCard() {
     
     // Ajouter l'événement clic directement
     adminCard.addEventListener('click', () => {
-        console.log('🖱️ Clic sur carte admin - Initialisation du module');
-        initAdminModule();
+        console.log('🖱️ Clic sur carte admin - Redirection vers page dédiée');
+        window.location.href = 'admin.html';
     });
     
     dashboardGrid.appendChild(adminCard);
