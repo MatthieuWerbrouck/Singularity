@@ -12,10 +12,18 @@ const TUYA_CONFIG = {
 
 /**
  * Générer la signature HMAC-SHA256 pour l'authentification Tuya
+ * Format exact: client_id + access_token (si présent) + timestamp + nonce + stringToSign
  */
-function generateSignature(clientId, timestamp, nonce, signStr, secret) {
-    const str = clientId + timestamp + nonce + signStr;
-    return crypto.createHmac('sha256', secret).update(str, 'utf8').digest('hex').toUpperCase();
+function generateTuyaSignature(clientId, accessToken, timestamp, nonce, stringToSign, secret) {
+    // Construction correcte selon documentation Tuya
+    const signatureString = clientId + (accessToken || '') + timestamp + nonce + stringToSign;
+    console.log('🔐 Signature String:', signatureString);
+    console.log('🔐 Secret (partial):', secret.substring(0, 8) + '...');
+    
+    const signature = crypto.createHmac('sha256', secret).update(signatureString, 'utf8').digest('hex').toUpperCase();
+    console.log('🔐 Generated Signature:', signature);
+    
+    return signature;
 }
 
 /**
@@ -26,14 +34,20 @@ function callTuyaAPI(method, path, body = null, accessToken = '') {
         const timestamp = Date.now().toString();
         const nonce = Math.random().toString(36).substring(2, 15);
         
-        // Construction du string à signer
+        // Construction du string à signer selon documentation Tuya
         const bodyStr = body ? JSON.stringify(body) : '';
         const bodyHash = crypto.createHash('sha256').update(bodyStr, 'utf8').digest('hex');
         const stringToSign = method + '\n' + bodyHash + '\n' + '\n' + path;
         
-        // Génération signature
-        const sign = generateSignature(
+        console.log('📝 Method:', method);
+        console.log('📝 Path:', path);
+        console.log('📝 Body Hash:', bodyHash);
+        console.log('📝 String to Sign:', stringToSign);
+        
+        // Génération signature avec le bon format
+        const sign = generateTuyaSignature(
             TUYA_CONFIG.ACCESS_ID,
+            accessToken,
             timestamp,
             nonce,
             stringToSign,
@@ -46,9 +60,13 @@ function callTuyaAPI(method, path, body = null, accessToken = '') {
             'sign_method': 'HMAC-SHA256',
             't': timestamp,
             'nonce': nonce,
-            'Content-Type': 'application/json',
-            'Content-Length': bodyStr.length
+            'Content-Type': 'application/json'
         };
+        
+        // Ajouter Content-Length seulement pour les requêtes avec body
+        if (bodyStr && method !== 'GET') {
+            headers['Content-Length'] = Buffer.byteLength(bodyStr, 'utf8');
+        }
         
         if (accessToken) {
             headers['access_token'] = accessToken;
