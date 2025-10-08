@@ -187,14 +187,26 @@ class AdminApp {
 
     async handleLogout() {
         try {
-            await authManager.signOut();
-            showToast('Déconnexion réussie', 'success');
+            console.log('🚪 Déconnexion depuis la page admin...');
+            const result = await authManager.signOut();
+            
+            if (result.success) {
+                const message = result.message || 'Déconnexion réussie';
+                showToast(message, 'success');
+                
+                // Redirection après un court délai
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            }
+        } catch (error) {
+            console.error('❌ Erreur déconnexion:', error);
+            
+            // Même en cas d'erreur, on redirige (session probablement corrompue)
+            showToast('Déconnexion avec erreur - redirection...', 'warning');
             setTimeout(() => {
                 window.location.href = 'index.html';
-            }, 1000);
-        } catch (error) {
-            console.error('Erreur déconnexion:', error);
-            showToast('Erreur lors de la déconnexion', 'error');
+            }, 2000);
         }
     }
 }

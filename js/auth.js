@@ -91,11 +91,63 @@ export class AuthManager {
         if (!supabase) {
             this.user = null;
             this.updateUI();
-            return;
+            return { success: true };
         }
 
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
+        try {
+            console.log('🚪 Tentative de déconnexion...');
+            
+            // Vérifier si on a une session avant d'essayer de se déconnecter
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (!session) {
+                console.log('ℹ️ Pas de session active - nettoyage local uniquement');
+                this.user = null;
+                this.updateUI();
+                return { success: true, message: 'Déjà déconnecté' };
+            }
+
+            // Tentative de déconnexion avec Supabase
+            const { error } = await supabase.auth.signOut();
+            
+            if (error) {
+                console.warn('⚠️ Erreur déconnexion Supabase:', error);
+                
+                // Si c'est une erreur de session manquante, on considère que c'est OK
+                if (error.message.includes('Auth session missing') || 
+                    error.message.includes('session_not_found')) {
+                    console.log('✅ Session déjà expirée - nettoyage local');
+                    this.user = null;
+                    this.updateUI();
+                    return { success: true, message: 'Session expirée' };
+                }
+                
+                // Pour d'autres erreurs, on nettoie quand même localement mais on signale l'erreur
+                this.user = null;
+                this.updateUI();
+                throw error;
+            }
+            
+            console.log('✅ Déconnexion réussie');
+            this.user = null;
+            this.updateUI();
+            return { success: true, message: 'Déconnexion réussie' };
+            
+        } catch (error) {
+            console.error('❌ Erreur lors de la déconnexion:', error);
+            
+            // En cas d'erreur, forcer le nettoyage local
+            this.user = null;
+            this.updateUI();
+            
+            // Retourner l'erreur seulement si ce n'est pas une erreur de session
+            if (!error.message.includes('Auth session missing') && 
+                !error.message.includes('session_not_found')) {
+                throw error;
+            }
+            
+            return { success: true, message: 'Déconnexion forcée' };
+        }
     }
 
     isAuthenticated() {

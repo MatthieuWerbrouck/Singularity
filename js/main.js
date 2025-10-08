@@ -192,11 +192,16 @@ function setupAuthForms() {
     // Déconnexion
     logoutBtn.addEventListener('click', async () => {
         try {
-            await authManager.signOut();
-            showMessage('Déconnexion réussie', 'success');
+            console.log('🚪 Déconnexion depuis le dashboard...');
+            const result = await authManager.signOut();
+            
+            if (result.success) {
+                const message = result.message || 'Déconnexion réussie';
+                showToast(message, 'success');
+            }
         } catch (error) {
-            console.error('Erreur de déconnexion:', error);
-            showMessage('Erreur de déconnexion', 'error');
+            console.error('❌ Erreur de déconnexion:', error);
+            showToast('Problème de déconnexion - veuillez actualiser la page', 'warning');
         }
     });
 }
