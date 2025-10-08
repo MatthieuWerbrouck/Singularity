@@ -457,6 +457,15 @@ class AdminManager {
             }
         });
 
+        // Gestion de la touche Escape
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                this.hideModal();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+
         // Afficher modal avec animation
         setTimeout(() => modalOverlay.classList.add('show'), 10);
 
