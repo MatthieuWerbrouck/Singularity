@@ -2,7 +2,25 @@ import { initSupabase, authManager } from './auth.js';
 import { APP_CONFIG } from './config.js';
 import { AdminManager } from './admin.js';
 
-// Utilitaires pour l'affichage des messages
+// Vérification des accès administrateur
+async function checkAdminAccess() {
+    if (!authManager.user) {
+        console.log('❌ Utilisateur non connecté');
+        return false;
+    }
+    
+    try {
+        console.log('🔍 Appel hasAdminAccess...');
+        const hasAccess = await authManager.hasAdminAccess();
+        console.log('🎯 Résultat hasAdminAccess:', hasAccess);
+        return hasAccess;
+    } catch (error) {
+        console.log('❌ Vérification admin échouée:', error);
+        return false;
+    }
+}
+
+// Fonction pour l'affichage des messages
 function showMessage(text, type = 'info') {
     // Supprimer les messages existants
     const existingMessages = document.querySelectorAll('.message');
