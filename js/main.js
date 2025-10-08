@@ -265,8 +265,8 @@ function addAdminCard() {
     
     // Ajouter l'événement clic directement
     adminCard.addEventListener('click', () => {
-        console.log('🖱️ Clic sur carte admin - Redirection vers admin.html');
-        window.location.href = 'admin.html';
+        console.log('🖱️ Clic sur carte admin - Initialisation du module');
+        initAdminModule();
     });
     
     dashboardGrid.appendChild(adminCard);
