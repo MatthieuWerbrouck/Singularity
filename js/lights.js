@@ -8,65 +8,44 @@ class TuyaLightManager {
         this.devices = [];
         this.config = TUYA_CONFIG;
         this.isConnected = false;
+        this.apiBase = window.location.origin; // Utiliser notre proxy API
     }
 
-    // === AUTHENTIFICATION TUYA ===
+    // === AUTHENTIFICATION TUYA VIA PROXY ===
     
     async authenticate() {
         try {
-            const timestamp = Date.now().toString();
-            const signString = this.config.accessId + timestamp;
+            console.log('🔐 Authentification via proxy API...');
             
-            // Générer la signature HMAC-SHA256
-            const signature = await this.generateSignature(signString, this.config.accessSecret);
-            
-            const response = await fetch(`${this.config.baseUrl}/${this.config.version}/token?grant_type=1`, {
-                method: 'GET',
+            const response = await fetch(`${this.apiBase}/api/tuya?action=auth`, {
+                method: 'POST',
                 headers: {
-                    'client_id': this.config.accessId,
-                    't': timestamp,
-                    'sign_method': 'HMAC-SHA256',
-                    'sign': signature,
                     'Content-Type': 'application/json'
                 }
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const data = await response.json();
             
-            if (data.success && data.result) {
-                this.accessToken = data.result.access_token;
-                this.tokenExpiry = Date.now() + (data.result.expire_time * 1000);
-                this.isConnected = true;
-                console.log('✅ Authentification Tuya réussie');
-                return true;
-            } else {
-                console.error('❌ Erreur authentification Tuya:', data);
-                throw new Error(data.msg || 'Authentification échouée');
+            if (!data.success) {
+                throw new Error(`Tuya Auth Error: ${data.error || 'Authentication failed'}`);
             }
+
+            this.accessToken = data.data.access_token;
+            this.tokenExpiry = Date.now() + (data.data.expire_time * 1000);
+            this.isConnected = true;
+            
+            console.log('✅ Authentification Tuya réussie via proxy');
+            return true;
+            
         } catch (error) {
             console.error('❌ Erreur connexion Tuya:', error);
             this.isConnected = false;
             throw error;
         }
-    }
-
-    async generateSignature(stringToSign, secret) {
-        // Utiliser Web Crypto API pour générer la signature HMAC-SHA256
-        const encoder = new TextEncoder();
-        const keyData = encoder.encode(secret);
-        const messageData = encoder.encode(stringToSign);
-        
-        const cryptoKey = await crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['sign']
-        );
-        
-        const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-        const hashArray = Array.from(new Uint8Array(signature));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
     }
 
     async ensureAuthenticated() {
@@ -81,41 +60,37 @@ class TuyaLightManager {
         try {
             await this.ensureAuthenticated();
             
-            const timestamp = Date.now().toString();
-            const signString = this.config.accessId + this.accessToken + timestamp;
-            const signature = await this.generateSignature(signString, this.config.accessSecret);
-
-            const response = await fetch(`${this.config.baseUrl}/${this.config.version}/devices`, {
+            const response = await fetch(`${this.apiBase}/api/tuya?action=devices`, {
                 method: 'GET',
                 headers: {
-                    'client_id': this.config.accessId,
-                    'access_token': this.accessToken,
-                    't': timestamp,
-                    'sign_method': 'HMAC-SHA256',
-                    'sign': signature,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'access_token': this.accessToken
                 }
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const data = await response.json();
             
-            if (data.success && data.result) {
-                // Filtrer uniquement les lumières
-                this.devices = data.result.filter(device => 
-                    device.category === 'dj' || // Lumière
-                    device.category === 'xdd' || // Bande LED
-                    device.category === 'fwd' || // Lumière intelligente
-                    device.name.toLowerCase().includes('light') ||
-                    device.name.toLowerCase().includes('lumière') ||
-                    device.name.toLowerCase().includes('lamp')
-                );
-                
-                console.log(`💡 ${this.devices.length} lumière(s) trouvée(s):`, this.devices);
-                return this.devices;
-            } else {
-                console.error('❌ Erreur récupération appareils:', data);
-                throw new Error(data.msg || 'Impossible de récupérer les appareils');
+            if (!data.success) {
+                throw new Error(`Tuya Devices Error: ${data.error || 'Failed to get devices'}`);
             }
+            
+            // Filtrer uniquement les lumières
+            this.devices = (data.data || []).filter(device => 
+                device.category === 'dj' || // Lumière
+                device.category === 'xdd' || // Bande LED
+                device.category === 'fwd' || // Lumière intelligente
+                device.name?.toLowerCase().includes('light') ||
+                device.name?.toLowerCase().includes('lumière') ||
+                device.name?.toLowerCase().includes('lamp')
+            );
+            
+            console.log(`💡 ${this.devices.length} lumière(s) trouvée(s):`, this.devices);
+            return this.devices;
+            
         } catch (error) {
             console.error('❌ Erreur getDevices:', error);
             throw error;
@@ -126,32 +101,27 @@ class TuyaLightManager {
         try {
             await this.ensureAuthenticated();
             
-            const timestamp = Date.now().toString();
-            const url = `/devices/${deviceId}/status`;
-            const signString = this.config.accessId + this.accessToken + timestamp + 'GET' + 
-                             crypto.createHash ? '' : url; // Simplified for browser
-            const signature = await this.generateSignature(signString, this.config.accessSecret);
-
-            const response = await fetch(`${this.config.baseUrl}/${this.config.version}${url}`, {
+            const response = await fetch(`${this.apiBase}/api/tuya?action=device-status&deviceId=${deviceId}`, {
                 method: 'GET',
                 headers: {
-                    'client_id': this.config.accessId,
-                    'access_token': this.accessToken,
-                    't': timestamp,
-                    'sign_method': 'HMAC-SHA256',
-                    'sign': signature,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'access_token': this.accessToken
                 }
             });
 
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             const data = await response.json();
             
-            if (data.success) {
-                return data.result || [];
-            } else {
-                console.error('❌ Erreur statut appareil:', data);
+            if (!data.success) {
+                console.error('❌ Erreur statut appareil:', data.error);
                 return [];
             }
+            
+            return data.data || [];
+            
         } catch (error) {
             console.error('❌ Erreur getDeviceStatus:', error);
             return [];
@@ -164,34 +134,28 @@ class TuyaLightManager {
         try {
             await this.ensureAuthenticated();
             
-            const timestamp = Date.now().toString();
-            const body = JSON.stringify({ commands });
-            const url = `/devices/${deviceId}/commands`;
-            const signString = this.config.accessId + this.accessToken + timestamp + 'POST' + url + body;
-            const signature = await this.generateSignature(signString, this.config.accessSecret);
-
-            const response = await fetch(`${this.config.baseUrl}/${this.config.version}${url}`, {
+            const response = await fetch(`${this.apiBase}/api/tuya?action=device-control&deviceId=${deviceId}`, {
                 method: 'POST',
                 headers: {
-                    'client_id': this.config.accessId,
-                    'access_token': this.accessToken,
-                    't': timestamp,
-                    'sign_method': 'HMAC-SHA256',
-                    'sign': signature,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'access_token': this.accessToken
                 },
-                body: body
+                body: JSON.stringify({ commands })
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
             const data = await response.json();
             
-            if (data.success) {
-                console.log('✅ Commande envoyée:', commands);
-                return data.result;
-            } else {
-                console.error('❌ Erreur contrôle appareil:', data);
-                throw new Error(data.msg || 'Commande échouée');
+            if (!data.success) {
+                throw new Error(`Tuya Control Error: ${data.error || 'Command failed'}`);
             }
+
+            console.log('✅ Commande envoyée:', commands);
+            return data.data;
+            
         } catch (error) {
             console.error('❌ Erreur controlDevice:', error);
             throw error;
