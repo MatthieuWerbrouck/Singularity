@@ -2,11 +2,11 @@
 const crypto = require('crypto');
 const https = require('https');
 
-// Vos credentials actuels
+// Vos credentials actuels (mis à jour)
 const TUYA_MAIN_CONFIG = {
     ACCESS_ID: 'gmxydg3hn4fgxkkxgkjw',
-    SECRET: '2d58fdf6bf474081b168e9114435ab8d',
-    BASE_URL: 'openapi.tuyeus.com' // Test EU aussi
+    SECRET: 'afd2800334ae4b3cad9314b0d81d5726',
+    BASE_URL: 'openapi.tuyaus.com' // US data center
 };
 
 // Test avec différents data centers
@@ -166,10 +166,30 @@ module.exports = async function handler(req, res) {
     console.log('🔍 === COMPREHENSIVE TUYA TEST ===');
     
     try {
-        // Test tous les data centers
+        // Test avec credentials mis à jour - commencer par US
+        console.log('🔑 Using updated credentials with correct secret');
+        
         const results = {};
         
-        for (const dc of ['US', 'EU', 'CN']) {
+        // Test US d'abord (data center par défaut)
+        console.log(`\n🧪 Testing US data center with correct credentials...`);
+        const usResult = await testTuyaAPI(TUYA_MAIN_CONFIG, 'US');
+        results['US'] = usResult;
+        
+        // Si US fonctionne, on retourne le succès
+        if (usResult.success) {
+            console.log(`✅ SUCCESS with US data center and updated credentials!`);
+            return res.json({
+                success: true,
+                workingDataCenter: 'US',
+                data: usResult.data,
+                message: 'Authentication successful with corrected credentials!',
+                allResults: results
+            });
+        }
+        
+        // Si US échoue encore, tester les autres
+        for (const dc of ['EU', 'CN']) {
             console.log(`\n🧪 Testing ${dc} data center...`);
             const result = await testTuyaAPI(TUYA_MAIN_CONFIG, dc);
             results[dc] = result;
