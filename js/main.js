@@ -111,9 +111,6 @@ function setupAuthForms() {
 async function setupDashboard() {
     const dashboardCards = document.querySelectorAll('.dashboard-card');
     
-    // Ajouter un bouton de debug temporaire
-    addDebugButton();
-    
     // Vérifier si l'utilisateur est admin pour ajouter le module admin
     console.log('🔍 Vérification accès admin...');
     const isAdmin = await checkAdminAccess();
@@ -124,9 +121,6 @@ async function setupDashboard() {
         addAdminCard();
     } else {
         console.log('❌ Pas d\'accès admin');
-        // Forcer l'ajout de la carte pour le debug
-        console.log('🔧 Ajout forcé pour debug');
-        addAdminCard();
     }
     
     dashboardCards.forEach(card => {
@@ -161,38 +155,6 @@ async function checkAdminAccess() {
         console.log('❌ Vérification admin échouée:', error);
         return false;
     }
-}
-
-// Fonction de debug temporaire
-function addDebugButton() {
-    const dashboardPage = document.getElementById('dashboardPage');
-    if (!dashboardPage || document.querySelector('#debugBtn')) return;
-    
-    const debugBtn = document.createElement('button');
-    debugBtn.id = 'debugBtn';
-    debugBtn.textContent = '🔍 Debug Profile';
-    debugBtn.style.cssText = 'position:fixed;top:10px;right:10px;z-index:1000;background:#dc2626;color:white;border:none;padding:10px;border-radius:5px;cursor:pointer;';
-    
-    debugBtn.addEventListener('click', async () => {
-        console.log('=== DEBUG PROFILE ===');
-        console.log('User:', authManager.user);
-        console.log('IsAuthenticated:', authManager.isAuthenticated());
-        
-        const profile = await authManager.getUserProfile();
-        console.log('Profile complet:', profile);
-        
-        if (profile) {
-            console.log('Role data:', profile.roles);
-            console.log('Is super admin:', profile.is_super_admin);
-            console.log('Role level:', profile.roles?.level);
-            console.log('Role name:', profile.roles?.name);
-        }
-        
-        const hasAccess = await authManager.hasAdminAccess();
-        console.log('Has admin access:', hasAccess);
-    });
-    
-    dashboardPage.appendChild(debugBtn);
 }
 
 // Ajouter la carte d'administration au dashboard
