@@ -341,13 +341,13 @@ class AdminManager {
 
     showAddUserModal() {
         // TODO: Implémenter le modal d'ajout d'utilisateur
-        alert('Modal d\'ajout d\'utilisateur - À implémenter');
+        this.showMessage('Modal d\'ajout d\'utilisateur - En développement', 'info');
     }
 
     async editUser(userId) {
         // TODO: Implémenter l'édition d'utilisateur
         console.log('Édition utilisateur:', userId);
-        alert('Édition utilisateur - À implémenter');
+        this.showMessage('Édition utilisateur - En développement', 'info');
     }
 
     async toggleUserStatus(userId, currentStatus) {
@@ -362,7 +362,7 @@ class AdminManager {
             if (error) throw error;
 
             await this.refreshData();
-            this.showMessage(`Statut utilisateur mis à jour vers: ${newStatus}`, 'success');
+            this.showSuccess(`Statut utilisateur mis à jour vers: ${newStatus}`);
         } catch (error) {
             console.error('Erreur changement statut:', error);
             this.showError('Erreur lors du changement de statut');
@@ -370,12 +370,25 @@ class AdminManager {
     }
 
     showMessage(message, type = 'info') {
-        // TODO: Implémenter un système de notifications
-        alert(message);
+        // Utiliser le système de toast moderne
+        if (window.showToast) {
+            window.showToast(message, type);
+        } else {
+            // Fallback vers alert si les toasts ne sont pas disponibles
+            alert(message);
+        }
     }
 
     showError(message) {
-        this.showMessage(`Erreur: ${message}`, 'error');
+        this.showMessage(message, 'error');
+    }
+
+    showSuccess(message) {
+        this.showMessage(message, 'success');
+    }
+
+    showWarning(message) {
+        this.showMessage(message, 'warning');
     }
 }
 

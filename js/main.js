@@ -20,29 +20,105 @@ async function checkAdminAccess() {
     }
 }
 
-// Fonction pour l'affichage des messages
+// Fonction pour l'affichage des messages (ancienne version - garde pour compatibilité)
 function showMessage(text, type = 'info') {
-    // Supprimer les messages existants
-    const existingMessages = document.querySelectorAll('.message');
-    existingMessages.forEach(msg => msg.remove());
-
-    // Créer le nouveau message
-    const message = document.createElement('div');
-    message.className = `message ${type}`;
-    message.textContent = text;
-
-    // Ajouter au début de la page active
-    const activePage = document.querySelector('.page[style*="block"]') || document.getElementById('loginPage');
-    const container = activePage.querySelector('.login-container, .dashboard-container') || activePage;
-    container.insertBefore(message, container.firstChild);
-
-    // Supprimer automatiquement après 5 secondes
-    setTimeout(() => {
-        if (message.parentNode) {
-            message.remove();
-        }
-    }, 5000);
+    // Utiliser le nouveau système de toast
+    showToast(text, type);
 }
+
+// Système de Toast Notifications moderne
+class ToastManager {
+    constructor() {
+        this.container = null;
+        this.toasts = [];
+        this.init();
+    }
+
+    init() {
+        // Créer le conteneur de toasts s'il n'existe pas
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.className = 'toast-container';
+            document.body.appendChild(this.container);
+        }
+    }
+
+    show(message, type = 'info', title = null, duration = 5000) {
+        const toast = this.createToast(message, type, title);
+        this.container.appendChild(toast);
+        this.toasts.push(toast);
+
+        // Animation d'entrée
+        setTimeout(() => toast.classList.add('show'), 100);
+
+        // Auto-suppression
+        if (duration > 0) {
+            setTimeout(() => this.hide(toast), duration);
+        }
+
+        return toast;
+    }
+
+    createToast(message, type, title) {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const icons = {
+            success: '✅',
+            error: '❌', 
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+
+        const titles = {
+            success: title || 'Succès',
+            error: title || 'Erreur',
+            warning: title || 'Attention',
+            info: title || 'Information'
+        };
+
+        toast.innerHTML = `
+            <div class="toast-icon">${icons[type] || icons.info}</div>
+            <div class="toast-content">
+                <div class="toast-title">${titles[type]}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="toastManager.hide(this.parentElement)">×</button>
+        `;
+
+        return toast;
+    }
+
+    hide(toast) {
+        if (!toast || !toast.parentNode) return;
+
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+                this.toasts = this.toasts.filter(t => t !== toast);
+            }
+        }, 300);
+    }
+
+    clear() {
+        this.toasts.forEach(toast => this.hide(toast));
+    }
+}
+
+// Instance globale du gestionnaire de toasts
+const toastManager = new ToastManager();
+
+// Fonction helper pour afficher des toasts
+function showToast(message, type = 'info', title = null, duration = 5000) {
+    return toastManager.show(message, type, title, duration);
+}
+
+// Exposer globalement pour le debugging et l'utilisation
+window.toastManager = toastManager;
+window.showToast = showToast;
 
 // Gestion des formulaires d'authentification
 function setupAuthForms() {
