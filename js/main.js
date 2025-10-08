@@ -146,6 +146,12 @@ async function checkAdminAccess() {
         return false;
     }
     
+    // Accès temporaire pour l'utilisateur demo
+    if (authManager.user?.email === 'demo@singularity.app') {
+        console.log('🎯 Accès demo accordé temporairement');
+        return true;
+    }
+    
     try {
         console.log('🔍 Appel hasAdminAccess...');
         const hasAccess = await authManager.hasAdminAccess();
