@@ -178,29 +178,36 @@ export class AuthManager {
     }
 
     updateUI() {
+        // Vérifier si nous sommes sur la page principale (avec les éléments du dashboard)
         const loginPage = document.getElementById('loginPage');
         const registerPage = document.getElementById('registerPage');
         const dashboardPage = document.getElementById('dashboardPage');
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
 
+        // Si nous ne sommes pas sur la page principale, ne pas modifier l'UI
+        if (!loginPage || !dashboardPage) {
+            console.log('🔍 updateUI ignoré - Page sans éléments dashboard');
+            return;
+        }
+
         if (this.isAuthenticated()) {
             // Utilisateur connecté
             loginPage.style.display = 'none';
-            registerPage.style.display = 'none';
+            if (registerPage) registerPage.style.display = 'none';
             dashboardPage.style.display = 'block';
-            loginBtn.style.display = 'none';
-            logoutBtn.style.display = 'block';
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'block';
             
             // Déclencher un événement pour que le dashboard se mette à jour
             window.dispatchEvent(new CustomEvent('userAuthenticated'));
         } else {
             // Utilisateur non connecté
             loginPage.style.display = 'block';
-            registerPage.style.display = 'none';
+            if (registerPage) registerPage.style.display = 'none';
             dashboardPage.style.display = 'none';
-            loginBtn.style.display = 'block';
-            logoutBtn.style.display = 'none';
+            if (loginBtn) loginBtn.style.display = 'block';
+            if (logoutBtn) logoutBtn.style.display = 'none';
         }
     }
 }
