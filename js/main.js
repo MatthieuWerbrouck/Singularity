@@ -105,16 +105,17 @@ class ToastManager {
     }
 }
 
-// Instance globale du gestionnaire de toasts
-const toastManager = new ToastManager();
+// Instance globale du gestionnaire de toasts (singleton)
+if (!window.toastManager) {
+    window.toastManager = new ToastManager();
+}
 
 // Fonction helper pour afficher des toasts
 function showToast(message, type = 'info', title = null, duration = 5000) {
-    return toastManager.show(message, type, title, duration);
+    return window.toastManager.show(message, type, title, duration);
 }
 
 // Exposer globalement pour le debugging et l'utilisation
-window.toastManager = toastManager;
 window.showToast = showToast;
 
 // Gestion des formulaires d'authentification
@@ -126,10 +127,10 @@ function setupAuthForms() {
     const logoutBtn = document.getElementById('logoutBtn');
 
     // Éviter les gestionnaires d'événements multiples
-    if (loginForm.hasAttribute('data-handlers-attached')) {
+    if (window.authFormsInitialized) {
         return;
     }
-    loginForm.setAttribute('data-handlers-attached', 'true');
+    window.authFormsInitialized = true;
 
     // Basculer entre connexion et inscription
     switchToRegister.addEventListener('click', () => {
@@ -403,6 +404,12 @@ function enableDemoMode() {
 
 // Initialisation de l'application
 async function initApp() {
+    // Éviter l'initialisation multiple
+    if (window.appInitialized) {
+        return;
+    }
+    window.appInitialized = true;
+    
     try {
         // Initialiser Supabase
         const supabaseInitialized = initSupabase();
