@@ -48,10 +48,57 @@ class AdminManager {
 
             if (error) throw error;
 
+            // Stocker les informations de l'admin courant
+            this.currentUserProfile = data;
+            
             return data.is_super_admin || (data.roles && data.roles.level >= 80);
         } catch (error) {
             return false;
         }
+    }
+
+    // Vérifier si l'admin courant peut gérer un rôle spécifique
+    canManageRole(roleLevel) {
+        if (!this.currentUserProfile) return false;
+        
+        // Super admin peut tout
+        if (this.currentUserProfile.is_super_admin) return true;
+        
+        // Peut gérer uniquement des niveaux inférieurs
+        const currentLevel = this.currentUserProfile.roles?.level || 0;
+        return currentLevel > roleLevel;
+    }
+
+    // Vérifier si l'admin courant peut gérer un utilisateur spécifique
+    canManageUser(userProfile) {
+        if (!this.currentUserProfile || !userProfile) return false;
+        
+        // Ne peut pas se gérer soi-même pour certaines actions
+        if (userProfile.id === this.currentUser.id) return false;
+        
+        // Super admin peut gérer tout le monde
+        if (this.currentUserProfile.is_super_admin) return true;
+        
+        // Ne peut pas gérer un autre super admin
+        if (userProfile.is_super_admin) return false;
+        
+        // Peut gérer uniquement des utilisateurs de niveau inférieur
+        const currentLevel = this.currentUserProfile.roles?.level || 0;
+        const targetLevel = userProfile.roles?.level || 0;
+        
+        return currentLevel > targetLevel;
+    }
+
+    // Obtenir les rôles assignables par l'admin courant
+    getAssignableRoles() {
+        if (!this.currentUserProfile) return [];
+        
+        return this.roles.filter(role => {
+            if (this.currentUserProfile.is_super_admin) return true;
+            
+            const currentLevel = this.currentUserProfile.roles?.level || 0;
+            return currentLevel > role.level;
+        });
     }
 
     async loadRoles() {
@@ -85,9 +132,31 @@ class AdminManager {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
             this.users = data || [];
+            console.log('Utilisateurs chargés:', this.users.length, this.users);
+            
+            // Rafraîchir l'affichage si l'interface est déjà créée
+            this.refreshUsersDisplay();
+            
         } catch (error) {
-            // Échec silencieux du chargement des utilisateurs
+            console.error('Erreur dans loadUsers():', error);
+            this.showError(`Erreur de chargement: ${error.message}`);
+            this.users = [];
+        }
+    }
+
+    // Méthode pour rafraîchir l'affichage des utilisateurs
+    refreshUsersDisplay() {
+        const usersTableBody = document.getElementById('usersTableBody');
+        const filterResults = document.getElementById('filterResults');
+        
+        if (usersTableBody) {
+            usersTableBody.innerHTML = this.users.map(user => this.renderUserRow(user)).join('');
+        }
+        
+        if (filterResults) {
+            filterResults.textContent = `${this.users.length} utilisateur(s)`;
         }
     }
 
@@ -264,15 +333,34 @@ class AdminManager {
                 </td>
                 <td style="padding: 12px; text-align: center;">
                     <div style="display: flex; gap: 8px; justify-content: center;">
-                        <button onclick="window.adminManager.editUser('${user.id}')" 
-                                style="background: #3b82f6; color: white; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                            ✏️ Éditer
-                        </button>
-                        ${user.id !== this.currentUser.id ? `
+                        ${this.canManageUser(user) ? `
+                            <button onclick="window.adminManager.editUser('${user.id}')" 
+                                    style="background: #3b82f6; color: white; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                ✏️ Éditer
+                            </button>
+                        ` : `
+                            <button disabled 
+                                    style="background: #d1d5db; color: #6b7280; padding: 6px 10px; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" 
+                                    title="Privilèges insuffisants">
+                                ✏️ Éditer
+                            </button>
+                        `}
+                        ${user.id !== this.currentUser.id && this.canManageUser(user) ? `
                             <button onclick="window.adminManager.toggleUserStatus('${user.id}', '${user.status}')" 
                                     style="background: ${user.status === 'active' ? '#ef4444' : '#10b981'}; color: white; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                 ${user.status === 'active' ? '⏸️ Suspendre' : '▶️ Activer'}
                             </button>
+                        ` : user.id !== this.currentUser.id ? `
+                            <button disabled 
+                                    style="background: #d1d5db; color: #6b7280; padding: 6px 10px; border: none; border-radius: 4px; cursor: not-allowed; font-size: 12px;" 
+                                    title="Privilèges insuffisants">
+                                ${user.status === 'active' ? '⏸️ Suspendre' : '▶️ Activer'}
+                            </button>
+                        ` : ''}
+                        ${user.id === this.currentUser.id ? `
+                            <span style="color: #6b7280; font-size: 11px; font-style: italic;">
+                                (Votre compte)
+                            </span>
                         ` : ''}
                     </div>
                 </td>
@@ -2001,12 +2089,26 @@ class AdminManager {
                     <label class="form-label" for="editUserRole">Rôle</label>
                     <select id="editUserRole" class="form-select">
                         <option value="">Aucun rôle</option>
-                        ${this.roles.map(role => `
-                            <option value="${role.id}" ${user.roles?.id == role.id ? 'selected' : ''}>
-                                ${role.icon} ${role.display_name} (Niveau ${role.level})
-                            </option>
-                        `).join('')}
+                        ${this.roles.map(role => {
+                            const canAssign = this.canManageRole(role.level);
+                            const isCurrentRole = user.roles?.id == role.id;
+                            
+                            return `
+                                <option value="${role.id}" 
+                                        ${isCurrentRole ? 'selected' : ''} 
+                                        ${!canAssign && !isCurrentRole ? 'disabled' : ''}>
+                                    ${role.icon} ${role.display_name} (Niveau ${role.level})
+                                    ${!canAssign && !isCurrentRole ? ' - Privilèges insuffisants' : ''}
+                                </option>
+                            `;
+                        }).join('')}
                     </select>
+                    <small style="color: #6b7280; font-size: 12px;">
+                        ${this.currentUserProfile?.is_super_admin ? 
+                            'Vous pouvez assigner tous les rôles.' : 
+                            `Vous pouvez assigner les rôles de niveau inférieur à ${this.currentUserProfile?.roles?.level || 0}.`
+                        }
+                    </small>
                     ${user.roles ? `
                         <small style="color: #3b82f6; font-size: 12px;">
                             Rôle actuel: ${user.roles.icon} ${user.roles.display_name} (Niveau ${user.roles.level})

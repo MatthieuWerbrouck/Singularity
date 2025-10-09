@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Panel Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .diagnostic-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { border-left: 4px solid #4caf50; }
+        .error { border-left: 4px solid #f44336; }
+        .warning { border-left: 4px solid #ff9800; }
+        .info { border-left: 4px solid #2196f3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a8b;
+        }
+        .result {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostic-container">
+        <h1>🔧 Diagnostic Panel Admin</h1>
+        <p>Cet outil diagnostique pourquoi le panel admin n'apparaît pas pour un compte super admin.</p>
+
+        <div class="test-section info">
+            <h3>📋 Étapes de diagnostic</h3>
+            <button onclick="runFullDiagnostic()">🚀 Lancer diagnostic complet</button>
+            <button onclick="testAuthentication()">🔑 Test authentification</button>
+            <button onclick="testAdminAccess()">👑 Test accès admin</button>
+            <button onclick="testPageVisibility()">👁️ Test visibilité page</button>
+        </div>
+
+        <div id="results"></div>
+
+        <!-- Section de connexion pour les tests -->
+        <div class="test-section">
+            <h3>🔐 Connexion pour tests</h3>
+            <div>
+                <input type="email" id="testEmail" placeholder="Email" style="padding: 8px; margin: 5px;">
+                <input type="password" id="testPassword" placeholder="Mot de passe" style="padding: 8px; margin: 5px;">
+                <button onclick="testLogin()">Se connecter</button>
+                <button onclick="testLogout()">Se déconnecter</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+        import { SUPABASE_CONFIG } from './js/config.js';
+        import { authManager } from './js/auth.js';
+
+        let supabase = null;
+
+        // Initialiser Supabase
+        if (SUPABASE_CONFIG.url && SUPABASE_CONFIG.url !== 'YOUR_SUPABASE_URL') {
+            supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+            authManager.init();
+        }
+
+        function addResult(title, content, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `
+                <h3>${title}</h3>
+                <div class="result">${content}</div>
+            `;
+            results.appendChild(div);
+        }
+
+        window.runFullDiagnostic = async function() {
+            document.getElementById('results').innerHTML = '';
+            addResult('🚀 Diagnostic démarré...', 'Exécution de tous les tests', 'info');
+            
+            await testAuthentication();
+            await testAdminAccess();
+            await testPageVisibility();
+            await testSupabaseConnection();
+            await testUserProfile();
+        };
+
+        window.testAuthentication = async function() {
+            try {
+                if (!supabase) {
+                    addResult('❌ Supabase non configuré', 'Supabase n\'est pas initialisé', 'error');
+                    return;
+                }
+
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    addResult('❌ Erreur authentification', `<pre>${JSON.stringify(error, null, 2)}</pre>`, 'error');
+                    return;
+                }
+
+                if (!user) {
+                    addResult('⚠️ Utilisateur non connecté', 'Aucun utilisateur authentifié', 'warning');
+                    return;
+                }
+
+                addResult('✅ Utilisateur authentifié', `
+                    <pre>ID: ${user.id}
+Email: ${user.email}
+Créé: ${user.created_at}</pre>
+                `, 'success');
+
+            } catch (error) {
+                addResult('❌ Exception authentification', `<pre>${error.message}</pre>`, 'error');
+            }
+        };
+
+        window.testAdminAccess = async function() {
+            try {
+                const hasAccess = await authManager.hasAdminAccess();
+                
+                if (hasAccess) {
+                    addResult('✅ Accès admin confirmé', 'L\'utilisateur a bien les droits admin', 'success');
+                } else {
+                    addResult('❌ Pas d\'accès admin', 'L\'utilisateur n\'a pas les droits admin', 'error');
+                }
+
+            } catch (error) {
+                addResult('❌ Erreur test admin', `<pre>${error.message}</pre>`, 'error');
+            }
+        };
+
+        window.testUserProfile = async function() {
+            try {
+                const profile = await authManager.getUserProfile();
+                
+                if (!profile) {
+                    addResult('❌ Profil non trouvé', 'Impossible de récupérer le profil utilisateur', 'error');
+                    return;
+                }
+
+                addResult('📊 Profil utilisateur', `
+                    <pre>ID: ${profile.id}
+Email: ${profile.email}
+Nom: ${profile.full_name || 'Non défini'}
+Super Admin: ${profile.is_super_admin ? 'OUI' : 'NON'}
+Rôle: ${profile.roles ? profile.roles.display_name : 'Aucun rôle'}
+Niveau rôle: ${profile.roles ? profile.roles.level : 'N/A'}</pre>
+                `, profile.is_super_admin ? 'success' : 'warning');
+
+            } catch (error) {
+                addResult('❌ Erreur profil', `<pre>${error.message}</pre>`, 'error');
+            }
+        };
+
+        window.testPageVisibility = function() {
+            const adminLink = document.querySelector('a[href="admin.html"]');
+            const adminBtn = document.getElementById('adminBtn');
+            
+            let visibility = [];
+            
+            if (adminLink) {
+                const style = window.getComputedStyle(adminLink);
+                visibility.push(`Lien admin.html: ${style.display !== 'none' ? 'VISIBLE' : 'CACHÉ'}`);
+            } else {
+                visibility.push('Lien admin.html: NON TROUVÉ');
+            }
+            
+            if (adminBtn) {
+                const style = window.getComputedStyle(adminBtn);
+                visibility.push(`Bouton admin: ${style.display !== 'none' ? 'VISIBLE' : 'CACHÉ'}`);
+            } else {
+                visibility.push('Bouton admin: NON TROUVÉ');
+            }
+
+            addResult('👁️ Visibilité éléments admin', `<pre>${visibility.join('\n')}</pre>`, 
+                     visibility.some(v => v.includes('VISIBLE')) ? 'success' : 'warning');
+        };
+
+        window.testSupabaseConnection = async function() {
+            try {
+                if (!supabase) {
+                    addResult('❌ Pas de connexion Supabase', 'Client Supabase non initialisé', 'error');
+                    return;
+                }
+
+                // Test de connexion basique
+                const { data, error } = await supabase.from('profiles').select('count').limit(1);
+                
+                if (error) {
+                    addResult('❌ Erreur connexion DB', `<pre>${JSON.stringify(error, null, 2)}</pre>`, 'error');
+                } else {
+                    addResult('✅ Connexion DB OK', 'Connexion à la base de données réussie', 'success');
+                }
+
+            } catch (error) {
+                addResult('❌ Exception Supabase', `<pre>${error.message}</pre>`, 'error');
+            }
+        };
+
+        window.testLogin = async function() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+
+            if (!email || !password) {
+                addResult('⚠️ Identifiants manquants', 'Veuillez saisir email et mot de passe', 'warning');
+                return;
+            }
+
+            try {
+                const result = await authManager.signIn(email, password);
+                addResult('✅ Connexion réussie', `Connecté en tant que: ${result.user.email}`, 'success');
+                
+                // Relancer les tests
+                setTimeout(() => runFullDiagnostic(), 1000);
+                
+            } catch (error) {
+                addResult('❌ Échec connexion', `<pre>${error.message}</pre>`, 'error');
+            }
+        };
+
+        window.testLogout = async function() {
+            try {
+                await authManager.signOut();
+                addResult('✅ Déconnexion réussie', 'Utilisateur déconnecté', 'success');
+            } catch (error) {
+                addResult('❌ Erreur déconnexion', `<pre>${error.message}</pre>`, 'error');
+            }
+        };
+
+        // Test automatique au chargement
+        setTimeout(() => {
+            if (supabase) {
+                runFullDiagnostic();
+            } else {
+                addResult('❌ Configuration manquante', 'Supabase n\'est pas configuré', 'error');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
