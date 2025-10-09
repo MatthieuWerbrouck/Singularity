@@ -1,6 +1,5 @@
 // modals.js - Gestion des modals pour les tâches et thèmes
-import { supabaseClient } from './config.js';
-import { getCurrentUser } from './auth.js';
+import { supabaseClient, getCurrentUser } from './tasks-config.js';
 import { ToastManager } from './main.js';
 
 // Variables globales pour les modals

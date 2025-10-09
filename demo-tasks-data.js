@@ -185,24 +185,25 @@ window.loadDemoData = function() {
     }
     
     // Recharger les données
-    if (window.currentThemes !== undefined) {
+    if (typeof window.loadThemes === 'function') {
         window.loadThemes();
     }
-    if (window.currentTasks !== undefined) {
+    if (typeof window.loadTasks === 'function') {
         window.loadTasks();
     }
 };
 
 // Auto-activation du mode démo si Supabase n'est pas disponible
 document.addEventListener('DOMContentLoaded', () => {
-    // Attendre un peu que les modules se chargent
+    // Attendre que les modules se chargent
     setTimeout(() => {
         // Vérifier si Supabase est configuré
-        if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient) {
+        if (typeof window.supabaseClient === 'undefined' || !window.supabaseClient || 
+            window.supabaseClient.supabaseUrl === 'https://fgnpwzlwwldneuvzsvjr.supabase.co') {
             console.log('⚠️ Supabase non configuré, activation du mode démonstration');
             window.toggleDemoMode(true);
         }
-    }, 1000);
+    }, 1500);
 });
 
 // Export des données pour utilisation externe

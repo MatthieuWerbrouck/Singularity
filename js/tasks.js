@@ -1,6 +1,5 @@
 // tasks.js - Module de gestion des tâches
-import { supabase, supabaseClient } from './config.js';
-import { getCurrentUser } from './auth.js';
+import { supabaseClient, getCurrentUser, isAuthenticated } from './tasks-config.js';
 import { ToastManager } from './main.js';
 import { showTaskModal, showThemeModal } from './modals.js';
 
@@ -15,19 +14,24 @@ let currentFilters = {
 };
 let currentView = 'todolist';
 
-// Exposer les variables globalement pour le mode démo et les tests
+// Exposer les variables et fonctions globalement pour le mode démo et les tests
 window.currentTasks = currentTasks;
 window.currentThemes = currentThemes;
+window.supabaseClient = supabaseClient;
+window.getCurrentUser = getCurrentUser;
 
 // Initialisation du module des tâches
 export async function initTasks() {
     console.log('🚀 Initialisation du module des tâches');
     
-    // Vérifier l'authentification
-    const user = await getCurrentUser();
-    if (!user) {
-        window.location.href = 'index.html';
-        return;
+    // Vérifier l'authentification (sauf en mode démo)
+    if (!window.DEMO_TASKS_DATA?.isDemoMode()) {
+        const user = await getCurrentUser();
+        if (!user) {
+            console.log('❌ Utilisateur non authentifié, redirection...');
+            window.location.href = 'index.html';
+            return;
+        }
     }
 
     try {
