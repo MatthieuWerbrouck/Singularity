@@ -6,17 +6,13 @@ import { AdminManager } from './admin.js';
 // Vérification des accès administrateur
 async function checkAdminAccess() {
     if (!authManager.user) {
-        console.log('❌ Utilisateur non connecté');
         return false;
     }
     
     try {
-        console.log('🔍 Appel hasAdminAccess...');
         const hasAccess = await authManager.hasAdminAccess();
-        console.log('🎯 Résultat hasAdminAccess:', hasAccess);
         return hasAccess;
     } catch (error) {
-        console.log('❌ Vérification admin échouée:', error);
         return false;
     }
 }
@@ -158,7 +154,6 @@ function setupAuthForms() {
             await authManager.signIn(email, password);
             showMessage('Connexion réussie !', 'success');
         } catch (error) {
-            console.error('Erreur de connexion:', error);
             showMessage(error.message || 'Erreur de connexion', 'error');
         } finally {
             loginForm.classList.remove('loading');
@@ -183,7 +178,6 @@ function setupAuthForms() {
                 document.getElementById('loginPage').style.display = 'block';
             }, 2000);
         } catch (error) {
-            console.error('Erreur d\'inscription:', error);
             showMessage(error.message || 'Erreur d\'inscription', 'error');
         } finally {
             registerForm.classList.remove('loading');
@@ -193,7 +187,6 @@ function setupAuthForms() {
     // Déconnexion
     logoutBtn.addEventListener('click', async () => {
         try {
-            console.log('🚪 Déconnexion depuis le dashboard...');
             const result = await authManager.signOut();
             
             if (result.success) {
@@ -201,7 +194,6 @@ function setupAuthForms() {
                 showToast(message, 'success');
             }
         } catch (error) {
-            console.error('❌ Erreur de déconnexion:', error);
             showToast('Problème de déconnexion - veuillez actualiser la page', 'warning');
         }
     });
@@ -211,26 +203,10 @@ function setupAuthForms() {
 async function setupDashboard() {
     const dashboardCards = document.querySelectorAll('.dashboard-card');
     
-    // Vérifier si l'utilisateur est admin pour ajouter le module admin
-    console.log('🔍 Vérification accès admin...');
-    console.log('👤 Utilisateur actuel:', authManager.user);
-    
     const isAdmin = await checkAdminAccess();
-    console.log('👑 Accès admin:', isAdmin);
-    
-    // Debug supplémentaire
-    if (authManager.user) {
-        const profile = await authManager.getUserProfile();
-        console.log('👤 Profil complet:', profile);
-        console.log('🏷️ Is super admin?', profile?.is_super_admin);
-        console.log('🎭 Rôle:', profile?.roles);
-    }
     
     if (isAdmin) {
-        console.log('✅ Ajout carte admin');
         addAdminCard();
-    } else {
-        console.log('❌ Pas d\'accès admin');
     }
     
 
@@ -241,7 +217,6 @@ async function setupDashboard() {
             
             // Gestion des autres modules (admin est géré directement dans addAdminCard)
             if (!title.includes('Administration')) {
-                console.log('🎯 Clic sur autre module:', title);
                 showMessage(`Module "${title}" - À développer prochainement`, 'info');
             }
         });
@@ -269,7 +244,6 @@ function addAdminCard() {
     
     // Ajouter l'événement clic directement
     adminCard.addEventListener('click', () => {
-        console.log('🖱️ Clic sur carte admin - Redirection vers page dédiée');
         window.location.href = 'admin.html';
     });
     
@@ -278,39 +252,29 @@ function addAdminCard() {
 
 // Initialisation du module administration
 async function initAdminModule() {
-    console.log('🚀 Initialisation du module admin...');
-    
     try {
         // Vérifier si Supabase est configuré
-        console.log('🔍 Configuration Supabase:', SUPABASE_CONFIG);
         const supabaseConfigured = SUPABASE_CONFIG && 
                                  SUPABASE_CONFIG.url !== 'YOUR_SUPABASE_URL' &&
                                  SUPABASE_CONFIG.url !== '' &&
                                  SUPABASE_CONFIG.anonKey !== 'YOUR_SUPABASE_ANON_KEY' &&
                                  SUPABASE_CONFIG.anonKey !== '';
         
-        console.log('✅ Supabase configuré?', supabaseConfigured);
-        
         if (!supabaseConfigured) {
-            // Mode démo - créer un panel admin simplifié
-            console.log('📝 Mode démo - Panel admin simplifié');
             createDemoAdminPanel();
             showToast('Panel d\'administration (mode démo)', 'info');
             return;
         }
 
         // Mode production avec Supabase
-        console.log('🔧 Mode production - Panel admin complet');
         const adminManager = new AdminManager();
         await adminManager.init();
         showToast('Panel d\'administration chargé', 'success');
         
     } catch (error) {
-        console.error('❌ Erreur initialisation admin:', error);
         showToast(error.message || 'Erreur lors du chargement du panel d\'administration', 'error');
         
         // Fallback vers le panel démo
-        console.log('🔄 Fallback vers le panel démo');
         createDemoAdminPanel();
     }
 }
@@ -413,8 +377,6 @@ window.showDemoFeature = showDemoFeature;
 
 // Mode demo (quand Supabase n'est pas configuré)
 function enableDemoMode() {
-    console.log('🎭 Mode démo activé - Supabase non configuré');
-    
     // Remplacer le gestionnaire de connexion par le mode démo
     const loginForm = document.getElementById('loginForm');
     
@@ -435,8 +397,6 @@ function enableDemoMode() {
 
 // Initialisation de l'application
 async function initApp() {
-    console.log(`🚀 Initialisation de ${APP_CONFIG.name} v${APP_CONFIG.version}`);
-    
     try {
         // Initialiser Supabase
         const supabaseInitialized = initSupabase();
@@ -454,10 +414,7 @@ async function initApp() {
             await authManager.init();
         }
         
-        console.log('✅ Application initialisée avec succès');
-        
     } catch (error) {
-        console.error('❌ Erreur d\'initialisation:', error);
         showMessage('Erreur d\'initialisation de l\'application', 'error');
     }
 }
@@ -471,17 +428,16 @@ if (document.readyState === 'loading') {
 
 // Gestion des erreurs globales
 window.addEventListener('error', (event) => {
-    console.error('Erreur globale:', event.error);
+    // Gestion silencieuse des erreurs
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-    console.error('Promise rejetée:', event.reason);
+    // Gestion silencieuse des promesses rejetées
 });
 
 
 
 // Écouter les changements d'authentification pour mettre à jour le dashboard
 window.addEventListener('userAuthenticated', () => {
-    console.log('👤 Utilisateur authentifié - Mise à jour du dashboard');
     setupDashboard();
 });

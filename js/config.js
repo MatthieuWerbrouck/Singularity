@@ -33,7 +33,6 @@ export const MODULES = {
         enabled: true,
         name: 'Suivi des Objectifs'
     },
-
     health: {
         enabled: false, // À activer plus tard
         name: 'Suivi Santé'

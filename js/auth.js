@@ -7,12 +7,10 @@ let supabase = null;
 // Initialiser Supabase (sera appelé une fois les vraies clés configurées)
 export function initSupabase() {
     if (SUPABASE_CONFIG.url === 'YOUR_SUPABASE_URL') {
-        console.warn('⚠️ Supabase non configuré. Veuillez ajouter vos clés dans config.js');
         return false;
     }
     
     supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-    console.log('✅ Supabase initialisé');
     return true;
 }
 
@@ -25,7 +23,6 @@ export class AuthManager {
 
     async init() {
         if (!supabase) {
-            console.warn('Supabase non initialisé - mode demo');
             this.isInitialized = true;
             return;
         }
@@ -95,13 +92,10 @@ export class AuthManager {
         }
 
         try {
-            console.log('🚪 Tentative de déconnexion...');
-            
             // Vérifier si on a une session avant d'essayer de se déconnecter
             const { data: { session } } = await supabase.auth.getSession();
             
             if (!session) {
-                console.log('ℹ️ Pas de session active - nettoyage local uniquement');
                 this.user = null;
                 this.updateUI();
                 return { success: true, message: 'Déjà déconnecté' };
@@ -111,12 +105,9 @@ export class AuthManager {
             const { error } = await supabase.auth.signOut();
             
             if (error) {
-                console.warn('⚠️ Erreur déconnexion Supabase:', error);
-                
                 // Si c'est une erreur de session manquante, on considère que c'est OK
                 if (error.message.includes('Auth session missing') || 
                     error.message.includes('session_not_found')) {
-                    console.log('✅ Session déjà expirée - nettoyage local');
                     this.user = null;
                     this.updateUI();
                     return { success: true, message: 'Session expirée' };
@@ -128,14 +119,11 @@ export class AuthManager {
                 throw error;
             }
             
-            console.log('✅ Déconnexion réussie');
             this.user = null;
             this.updateUI();
             return { success: true, message: 'Déconnexion réussie' };
             
         } catch (error) {
-            console.error('❌ Erreur lors de la déconnexion:', error);
-            
             // En cas d'erreur, forcer le nettoyage local
             this.user = null;
             this.updateUI();
@@ -182,13 +170,11 @@ export class AuthManager {
                 .single();
 
             if (error) {
-                console.error('Erreur chargement profil:', error);
                 return null;
             }
 
             return profile;
         } catch (error) {
-            console.error('Erreur getUserProfile:', error);
             return null;
         }
     }
@@ -198,13 +184,11 @@ export class AuthManager {
         const profile = await this.getUserProfile();
         
         if (!profile) {
-            console.log('❌ Pas de profil trouvé');
             return false;
         }
         
         // Vérifier is_super_admin
         if (profile.is_super_admin) {
-            console.log('✅ Accès via is_super_admin');
             return true;
         }
         

@@ -31,7 +31,6 @@ class AdminManager {
             this.createAdminInterface();
 
         } catch (error) {
-            console.error('Erreur initialisation admin:', error);
             this.showError(error.message);
         }
     }
@@ -51,7 +50,6 @@ class AdminManager {
 
             return data.is_super_admin || (data.roles && data.roles.level >= 80);
         } catch (error) {
-            console.error('Erreur vérification admin:', error);
             return false;
         }
     }
@@ -67,7 +65,7 @@ class AdminManager {
             if (error) throw error;
             this.roles = data || [];
         } catch (error) {
-            console.error('Erreur chargement rôles:', error);
+            // Échec silencieux du chargement des rôles
         }
     }
 
@@ -89,7 +87,7 @@ class AdminManager {
             if (error) throw error;
             this.users = data || [];
         } catch (error) {
-            console.error('Erreur chargement utilisateurs:', error);
+            // Échec silencieux du chargement des utilisateurs
         }
     }
 
@@ -807,8 +805,6 @@ class AdminManager {
         const roleFilter = document.getElementById('roleFilter')?.value || '';
         const searchText = document.getElementById('searchUsers')?.value.toLowerCase() || '';
         
-        console.log('Filtrage:', { statusFilter, roleFilter, searchText });
-        
         // Filtrer les utilisateurs
         let filteredUsers = this.users;
         
@@ -829,8 +825,6 @@ class AdminManager {
                 (user.full_name && user.full_name.toLowerCase().includes(searchText))
             );
         }
-        
-        console.log(`Filtrage: ${filteredUsers.length}/${this.users.length} utilisateurs`);
         
         // Mettre à jour l'affichage
         this.updateUsersTable(filteredUsers);
@@ -985,8 +979,6 @@ class AdminManager {
             isActive: document.getElementById('roleIsActive').checked
         };
 
-        console.log('Création rôle:', formData);
-
         try {
             // Désactiver le bouton pendant la création
             const btn = document.getElementById('modal-primary-btn');
@@ -1032,7 +1024,6 @@ class AdminManager {
             this.showSuccess(`Rôle "${formData.displayName}" créé avec succès !`);
 
         } catch (error) {
-            console.error('Erreur création rôle:', error);
             this.showError(`Erreur lors de la création : ${error.message}`);
 
             // Réactiver le bouton
@@ -1051,7 +1042,6 @@ class AdminManager {
             return;
         }
 
-        console.log('Édition rôle:', role);
         this.showEditRoleModal(role);
     }
 
@@ -1260,8 +1250,6 @@ class AdminManager {
             isActive: isSystemRole ? role.is_active : document.getElementById('editRoleIsActive')?.checked
         };
 
-        console.log('Modification rôle:', { roleId: role.id, formData });
-
         try {
             const btn = document.getElementById('modal-primary-btn');
             if (btn) {
@@ -1289,7 +1277,6 @@ class AdminManager {
             this.showSuccess(`Rôle "${formData.displayName}" modifié avec succès !`);
 
         } catch (error) {
-            console.error('Erreur modification rôle:', error);
             this.showError(`Erreur lors de la modification : ${error.message}`);
 
             const btn = document.getElementById('modal-primary-btn');
@@ -1326,7 +1313,6 @@ class AdminManager {
             await this.refreshData();
             this.showSuccess(`Rôle ${newStatus ? 'activé' : 'désactivé'} avec succès`);
         } catch (error) {
-            console.error('Erreur changement statut rôle:', error);
             this.showError('Erreur lors du changement de statut');
         }
     }
@@ -1418,7 +1404,6 @@ class AdminManager {
             this.showSuccess(`Rôle "${role.display_name}" supprimé définitivement`);
 
         } catch (error) {
-            console.error('Erreur suppression rôle:', error);
             this.showError(`Erreur lors de la suppression : ${error.message}`);
 
             const btn = document.getElementById('modal-primary-btn');
@@ -1513,7 +1498,6 @@ class AdminManager {
             this.updatePermissionsSummary();
 
         } catch (error) {
-            console.error('Erreur chargement permissions rôle:', error);
             this.showError('Erreur lors du chargement des permissions');
         }
     }
@@ -1535,7 +1519,7 @@ class AdminManager {
             });
 
         } catch (error) {
-            console.error('Erreur chargement permissions existantes:', error);
+            // Échec silencieux du chargement des permissions
         }
     }
 
@@ -1816,7 +1800,6 @@ class AdminManager {
             this.showSuccess('Permissions réinitialisées aux valeurs par défaut');
 
         } catch (error) {
-            console.error('Erreur réinitialisation permissions:', error);
             this.showError('Erreur lors de la réinitialisation');
         }
     }
@@ -1845,8 +1828,6 @@ class AdminManager {
                 checkedPermissions.push(checkbox.value);
             });
 
-            console.log('Sauvegarde permissions rôle:', { roleId, permissions: checkedPermissions });
-
             // TODO: Sauvegarder en base de données
             // Pour le moment, simuler la sauvegarde
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1854,7 +1835,6 @@ class AdminManager {
             this.showSuccess(`Permissions sauvegardées pour le rôle (${checkedPermissions.length} permissions)`);
 
         } catch (error) {
-            console.error('Erreur sauvegarde permissions:', error);
             this.showError('Erreur lors de la sauvegarde des permissions');
         } finally {
             // Réactiver le bouton
@@ -2112,22 +2092,30 @@ class AdminManager {
 
     async createUser() {
         const form = document.getElementById('addUserForm');
+        if (!form) {
+            this.showError('Erreur: formulaire non trouvé');
+            return;
+        }
+        
         if (!form.checkValidity()) {
             form.reportValidity();
             return;
         }
 
         const formData = {
-            email: document.getElementById('userEmail').value,
-            password: document.getElementById('userPassword').value,
-            fullName: document.getElementById('userFullName').value,
-            roleId: document.getElementById('userRole').value || null,
-            status: document.getElementById('userStatus').value,
-            isSuperAdmin: document.getElementById('userSuperAdmin').checked,
-            sendWelcomeEmail: document.getElementById('sendWelcomeEmail').checked
+            email: document.getElementById('userEmail')?.value,
+            password: document.getElementById('userPassword')?.value,
+            fullName: document.getElementById('userFullName')?.value,
+            roleId: document.getElementById('userRole')?.value || null,
+            status: document.getElementById('userStatus')?.value,
+            isSuperAdmin: document.getElementById('userSuperAdmin')?.checked,
+            sendWelcomeEmail: document.getElementById('sendWelcomeEmail')?.checked
         };
 
-        console.log('Création utilisateur:', formData);
+        if (!this.supabase) {
+            this.showError('Erreur: base de données non disponible');
+            return;
+        }
 
         try {
             // Désactiver le bouton pendant la création
@@ -2148,25 +2136,23 @@ class AdminManager {
                 }
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                throw authError;
+            }
 
-            // 2. Créer le profil utilisateur avec les données admin
-            const { error: profileError } = await this.supabase
-                .from('profiles')
-                .upsert({
-                    id: authData.user.id,
-                    email: formData.email,
-                    full_name: formData.fullName,
-                    role_id: formData.roleId,
-                    status: formData.status,
-                    is_super_admin: formData.isSuperAdmin,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }, { 
-                    onConflict: 'id' 
-                });
+            // 2. Créer le profil utilisateur avec la fonction serveur admin
+            const { data: profileData, error: profileError } = await this.supabase.rpc('admin_create_user', {
+                p_user_id: authData.user.id,
+                p_email: formData.email,
+                p_full_name: formData.fullName || null,
+                p_role_id: formData.roleId,
+                p_status: formData.status,
+                p_is_super_admin: formData.isSuperAdmin
+            });
 
-            if (profileError) throw profileError;
+            if (profileError) {
+                throw profileError;
+            }
 
             // 3. Actualiser la liste des utilisateurs
             await this.refreshData();
@@ -2181,7 +2167,6 @@ class AdminManager {
             }
 
         } catch (error) {
-            console.error('Erreur création utilisateur:', error);
             this.showError(`Erreur lors de la création : ${error.message}`);
 
             // Réactiver le bouton
@@ -2212,8 +2197,6 @@ class AdminManager {
                 user.is_super_admin // Conserver la valeur actuelle pour soi-même
         };
 
-        console.log('Modification utilisateur:', { userId: user.id, formData });
-
         try {
             // Désactiver le bouton pendant la mise à jour
             const btn = document.getElementById('modal-primary-btn');
@@ -2222,17 +2205,14 @@ class AdminManager {
                 btn.textContent = 'Sauvegarde en cours...';
             }
 
-            // Mise à jour du profil
-            const { error } = await this.supabase
-                .from('profiles')
-                .update({
-                    full_name: formData.fullName,
-                    role_id: formData.roleId === '' ? null : formData.roleId,
-                    status: formData.status,
-                    is_super_admin: formData.isSuperAdmin,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
+            // Mise à jour du profil via fonction admin
+            const { error } = await this.supabase.rpc('admin_update_user', {
+                p_user_id: user.id,
+                p_full_name: formData.fullName,
+                p_role_id: formData.roleId === '' ? null : formData.roleId,
+                p_status: formData.status,
+                p_is_super_admin: formData.isSuperAdmin
+            });
 
             if (error) throw error;
 
@@ -2249,7 +2229,6 @@ class AdminManager {
             }
 
         } catch (error) {
-            console.error('Erreur modification utilisateur:', error);
             this.showError(`Erreur lors de la modification : ${error.message}`);
 
             // Réactiver le bouton
@@ -2340,10 +2319,8 @@ class AdminManager {
                 return;
             }
 
-            console.log('Édition utilisateur:', user);
             this.showEditUserModal(user);
         } catch (error) {
-            console.error('Erreur édition utilisateur:', error);
             this.showError('Erreur lors de l\'ouverture de l\'édition');
         }
     }
@@ -2362,7 +2339,6 @@ class AdminManager {
             await this.refreshData();
             this.showSuccess(`Statut utilisateur mis à jour vers: ${newStatus}`);
         } catch (error) {
-            console.error('Erreur changement statut:', error);
             this.showError('Erreur lors du changement de statut');
         }
     }
@@ -2379,7 +2355,6 @@ class AdminManager {
 
             this.showSuccess(`Email de réinitialisation envoyé à ${user.email}`);
         } catch (error) {
-            console.error('Erreur reset password:', error);
             this.showError('Erreur lors de l\'envoi du reset mot de passe');
         }
     }
@@ -2401,7 +2376,6 @@ class AdminManager {
             // });
             
         } catch (error) {
-            console.error('Erreur génération mot de passe:', error);
             this.showError('Erreur lors de la génération du mot de passe temporaire');
         }
     }
@@ -2427,7 +2401,6 @@ class AdminManager {
             // await this.supabase.rpc('admin_force_user_logout', { user_id: user.id });
             
         } catch (error) {
-            console.error('Erreur déconnexion forcée:', error);
             this.showError('Erreur lors de la déconnexion forcée');
         }
     }
@@ -2490,11 +2463,10 @@ class AdminManager {
                 btn.textContent = 'Suppression en cours...';
             }
 
-            // Supprimer le profil (cela déclenchera la suppression en cascade si configurée)
-            const { error } = await this.supabase
-                .from('profiles')
-                .delete()
-                .eq('id', user.id);
+            // Supprimer l'utilisateur via fonction admin
+            const { error } = await this.supabase.rpc('admin_delete_user', {
+                p_user_id: user.id
+            });
 
             if (error) throw error;
 
@@ -2506,7 +2478,6 @@ class AdminManager {
             this.showSuccess(`Utilisateur ${user.email} supprimé définitivement`);
 
         } catch (error) {
-            console.error('Erreur suppression utilisateur:', error);
             this.showError(`Erreur lors de la suppression : ${error.message}`);
 
             // Réactiver le bouton

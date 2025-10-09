@@ -11,13 +11,6 @@ module.exports = async function handler(req, res) {
         return;
     }
     
-    console.log('🔍 Test API Request:', {
-        method: req.method,
-        url: req.url,
-        query: req.query,
-        headers: req.headers
-    });
-    
     try {
         // Test simple qui ne nécessite pas node-fetch
         res.json({ 
@@ -29,11 +22,9 @@ module.exports = async function handler(req, res) {
         });
         
     } catch (error) {
-        console.error('❌ Test API Error:', error);
         res.status(500).json({ 
             success: false, 
-            error: error.message,
-            stack: error.stack
+            error: error.message
         });
     }
 };
