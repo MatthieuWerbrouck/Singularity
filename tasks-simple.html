@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Singularity - Gestion des Tâches</title>
+    <title>Singularity - Gestion des Tâches (Simple)</title>
     <link rel="stylesheet" href="./styles/main.css">
     <style>
-        /* Styles spécifiques pour les tâches */
+        /* CSS spécifique intégré pour éviter les dépendances */
         .tasks-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -20,11 +20,6 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
             gap: 20px;
-        }
-        
-        .tasks-header h1 {
-            color: #1f2937;
-            margin: 0;
         }
         
         .view-switcher {
@@ -50,58 +45,6 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
-        .tasks-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-        
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #4b5563;
-        }
-        
-        /* Sections de vues */
-        .view-section {
-            display: none;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        .view-section.active {
-            display: block;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Filtres et barre d'outils */
         .tasks-toolbar {
             background: white;
             border-radius: 8px;
@@ -127,29 +70,8 @@
             padding: 8px 12px;
             border: 1px solid #d1d5db;
             border-radius: 6px;
-            font-size: 14px;
         }
         
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .filter-group label {
-            font-size: 14px;
-            color: #6b7280;
-            font-weight: 500;
-        }
-        
-        .filter-group select {
-            padding: 6px 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        /* Vue Todo List */
         .todo-list {
             background: white;
             border-radius: 8px;
@@ -164,19 +86,8 @@
             transition: all 0.2s;
         }
         
-        .task-item:last-child {
-            border-bottom: none;
-        }
-        
         .task-item:hover {
             background: #f8fafc;
-        }
-        
-        .task-checkbox {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            margin-right: 12px;
         }
         
         .task-content {
@@ -221,55 +132,6 @@
         .priority-high { background: #fef3c7; color: #d97706; }
         .priority-urgent { background: #fecaca; color: #dc2626; }
         
-        .task-actions {
-            display: flex;
-            gap: 8px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        
-        .task-item:hover .task-actions {
-            opacity: 1;
-        }
-        
-        .task-btn {
-            padding: 4px 8px;
-            border: none;
-            background: #f3f4f6;
-            color: #6b7280;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        
-        .task-btn:hover {
-            background: #e5e7eb;
-        }
-        
-        /* Vue Planning */
-        .planning-view {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 24px;
-        }
-        
-        .planning-sidebar {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            height: fit-content;
-        }
-        
-        .planning-calendar {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            min-height: 500px;
-        }
-        
-        /* États vides */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -281,30 +143,12 @@
             margin-bottom: 16px;
         }
         
-        .empty-state h3 {
-            margin-bottom: 8px;
-            color: #4b5563;
+        .view-section {
+            display: none;
         }
         
-        /* Responsive */
-        @media (max-width: 768px) {
-            .tasks-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .toolbar-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .planning-view {
-                grid-template-columns: 1fr;
-            }
-            
-            .tasks-actions {
-                justify-content: center;
-            }
+        .view-section.active {
+            display: block;
         }
     </style>
 </head>
@@ -321,28 +165,20 @@
         </header>
 
         <main class="tasks-container">
-            <!-- En-tête des tâches -->
             <div class="tasks-header">
                 <h1>📝 Gestion des Tâches</h1>
                 
-                <!-- Sélecteur de vue -->
                 <div class="view-switcher">
                     <button class="view-btn active" data-view="todolist">📋 Todo List</button>
                     <button class="view-btn" data-view="planning">📅 Planning</button>
                 </div>
                 
-                <!-- Actions principales -->
                 <div class="tasks-actions">
-                    <button class="btn btn-primary" id="addTaskBtn">
-                        ➕ Nouvelle Tâche
-                    </button>
-                    <button class="btn btn-secondary" id="manageThemesBtn">
-                        🎨 Gérer les Thèmes
-                    </button>
+                    <button class="btn btn-primary" id="addTaskBtn">➕ Nouvelle Tâche</button>
+                    <button class="btn btn-secondary" id="manageThemesBtn">🎨 Gérer les Thèmes</button>
                 </div>
             </div>
 
-            <!-- Barre d'outils (filtres, recherche) -->
             <div class="tasks-toolbar">
                 <div class="toolbar-row">
                     <div class="search-box">
@@ -381,35 +217,21 @@
                 </div>
             </div>
 
-            <!-- Vue Todo List -->
             <div id="todolistView" class="view-section active">
                 <div class="todo-list" id="tasksList">
-                    <!-- Les tâches seront ajoutées ici dynamiquement -->
                     <div class="empty-state">
                         <div class="empty-state-icon">📝</div>
-                        <h3>Aucune tâche trouvée</h3>
-                        <p>Commencez par créer votre première tâche !</p>
+                        <h3>Chargement des tâches...</h3>
+                        <p>Veuillez patienter</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Vue Planning -->
             <div id="planningView" class="view-section">
-                <div class="planning-view">
-                    <div class="planning-sidebar">
-                        <h3>📅 Navigation</h3>
-                        <div id="planningControls">
-                            <!-- Contrôles de navigation du planning -->
-                        </div>
-                    </div>
-                    
-                    <div class="planning-calendar" id="planningCalendar">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📅</div>
-                            <h3>Vue Planning</h3>
-                            <p>Visualisez vos tâches par dates d'échéance</p>
-                        </div>
-                    </div>
+                <div class="empty-state">
+                    <div class="empty-state-icon">📅</div>
+                    <h3>Vue Planning</h3>
+                    <p>Fonctionnalité en développement</p>
                 </div>
             </div>
         </main>
@@ -419,20 +241,24 @@
         </footer>
     </div>
 
-    <!-- Scripts -->
-    <script src="./js/init-global.js"></script>
-    <script type="module" src="./js/config.js"></script>
-    <script type="module" src="./js/auth.js"></script>
-    <script type="module" src="./js/main.js"></script>
-    
-    <!-- Module tâches standalone (non ES6) -->
+    <!-- Scripts minimalistes -->
+    <script src="./demo-tasks-data.js"></script>
     <script src="./js/tasks-standalone.js"></script>
     
-    <!-- Scripts de développement (à retirer en production) -->
-    <script src="./demo-tasks-data.js"></script>
-    <script src="./debug-modules.js"></script>
-    <script src="./test-standalone.js"></script>
-    <script src="./test-tasks-module.js"></script>
-    <script src="./quick-test.js"></script>
+    <!-- Test simple -->
+    <script>
+        console.log('🎯 Test simple de fonctionnement');
+        
+        setTimeout(() => {
+            console.log('📊 État après 2 secondes:');
+            console.log('- Tâches:', window.currentTasks?.length || 0);
+            console.log('- Thèmes:', window.currentThemes?.length || 0);
+            console.log('- renderCurrentView:', typeof window.renderCurrentView);
+            
+            if (typeof window.renderCurrentView === 'function') {
+                window.renderCurrentView();
+            }
+        }, 2000);
+    </script>
 </body>
 </html>
