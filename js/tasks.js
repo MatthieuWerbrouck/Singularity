@@ -14,11 +14,43 @@ let currentFilters = {
 };
 let currentView = 'todolist';
 
-// Exposer les variables et fonctions globalement pour le mode démo et les tests
-window.currentTasks = currentTasks;
-window.currentThemes = currentThemes;
-window.supabaseClient = supabaseClient;
-window.getCurrentUser = getCurrentUser;
+// Fonction pour exposer toutes les variables et fonctions globalement
+function exposeGlobally() {
+    // Variables d'état
+    window.currentTasks = currentTasks;
+    window.currentThemes = currentThemes;
+    window.supabaseClient = supabaseClient;
+    window.getCurrentUser = getCurrentUser;
+    
+    // Fonctions principales
+    window.loadTasks = loadTasks;
+    window.loadThemes = loadThemes;
+    window.updateThemeFilter = updateThemeFilter;
+    window.renderCurrentView = renderCurrentView;
+    window.getPriorityLabel = getPriorityLabel;
+    window.getStatusLabel = getStatusLabel;
+    
+    // Module complet
+    window.taskModule = {
+        currentTasks,
+        currentThemes,
+        supabaseClient,
+        getCurrentUser,
+        isAuthenticated,
+        loadTasks,
+        loadThemes,
+        updateThemeFilter,
+        renderCurrentView,
+        getPriorityLabel,
+        getStatusLabel,
+        initTasks
+    };
+    
+    console.log('🌐 Variables et fonctions exposées globalement');
+}
+
+// Exposer immédiatement
+exposeGlobally();
 
 // Initialisation du module des tâches
 export async function initTasks() {
@@ -394,13 +426,24 @@ window.deleteTask = async function(taskId) {
     }
 };
 
-// Exposer les fonctions nécessaires au niveau global
-window.loadTasks = loadTasks;
-window.loadThemes = loadThemes;
-window.updateThemeFilter = updateThemeFilter;
-window.renderCurrentView = renderCurrentView;
-window.getPriorityLabel = getPriorityLabel;
-window.getStatusLabel = getStatusLabel;
+// Enregistrer le module dans le système global après exposition
+setTimeout(() => {
+    if (window.moduleInitialization) {
+        window.moduleInitialization.register('tasks', window.taskModule);
+    }
+    
+    // Re-exposer après initialisation pour s'assurer que tout est disponible
+    exposeGlobally();
+}, 100);
 
 // Initialisation au chargement de la page
-document.addEventListener('DOMContentLoaded', initTasks);
+document.addEventListener('DOMContentLoaded', () => {
+    // Re-exposer avant l'initialisation
+    exposeGlobally();
+    
+    // Initialiser les tâches
+    initTasks();
+    
+    // Final exposure après initialisation
+    setTimeout(exposeGlobally, 500);
+});

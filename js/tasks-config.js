@@ -61,7 +61,26 @@ export const TASKS_CONFIG = {
     }
 };
 
+// Enregistrer le module dans le système global
+if (typeof window !== 'undefined' && window.moduleInitialization) {
+    window.moduleInitialization.register('tasks-config', {
+        supabaseClient,
+        getCurrentUser,
+        isAuthenticated,
+        TASKS_CONFIG,
+        initTasksConfig
+    });
+}
+
 // Initialiser automatiquement
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initTasksConfig, 100);
+    setTimeout(() => {
+        initTasksConfig();
+        // Vérifier les modules après initialisation
+        setTimeout(() => {
+            if (window.moduleInitialization) {
+                window.moduleInitialization.checkModules();
+            }
+        }, 500);
+    }, 100);
 });
