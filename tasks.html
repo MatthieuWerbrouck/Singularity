@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Singularity - Gestion des Tâches</title>
+    <link rel="stylesheet" href="./styles/main.css">
+    <style>
+        /* Styles spécifiques pour les tâches */
+        .tasks-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .tasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .tasks-header h1 {
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .view-switcher {
+            display: flex;
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        
+        .view-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .view-btn.active {
+            background: white;
+            color: #3b82f6;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tasks-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        /* Sections de vues */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .view-section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Filtres et barre d'outils */
+        .tasks-toolbar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .filter-group select {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        /* Vue Todo List */
+        .todo-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: all 0.2s;
+        }
+        
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .task-item:hover {
+            background: #f8fafc;
+        }
+        
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 12px;
+        }
+        
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .task-title {
+            font-weight: 500;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: #6b7280;
+            flex-wrap: wrap;
+        }
+        
+        .task-theme {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .priority-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .priority-low { background: #e5f3ff; color: #0066cc; }
+        .priority-normal { background: #f0f9ff; color: #0284c7; }
+        .priority-high { background: #fef3c7; color: #d97706; }
+        .priority-urgent { background: #fecaca; color: #dc2626; }
+        
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+        
+        .task-btn {
+            padding: 4px 8px;
+            border: none;
+            background: #f3f4f6;
+            color: #6b7280;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .task-btn:hover {
+            background: #e5e7eb;
+        }
+        
+        /* Vue Planning */
+        .planning-view {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 24px;
+        }
+        
+        .planning-sidebar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+        
+        .planning-calendar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            min-height: 500px;
+        }
+        
+        /* États vides */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 8px;
+            color: #4b5563;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tasks-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .toolbar-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .planning-view {
+                grid-template-columns: 1fr;
+            }
+            
+            .tasks-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <nav class="navbar">
+                <h1>🌟 Singularity</h1>
+                <div class="nav-links">
+                    <a href="index.html">🏠 Accueil</a>
+                    <button id="logoutBtn" class="btn btn-secondary">Déconnexion</button>
+                </div>
+            </nav>
+        </header>
+
+        <main class="tasks-container">
+            <!-- En-tête des tâches -->
+            <div class="tasks-header">
+                <h1>📝 Gestion des Tâches</h1>
+                
+                <!-- Sélecteur de vue -->
+                <div class="view-switcher">
+                    <button class="view-btn active" data-view="todolist">📋 Todo List</button>
+                    <button class="view-btn" data-view="planning">📅 Planning</button>
+                </div>
+                
+                <!-- Actions principales -->
+                <div class="tasks-actions">
+                    <button class="btn btn-primary" id="addTaskBtn">
+                        ➕ Nouvelle Tâche
+                    </button>
+                    <button class="btn btn-secondary" id="manageThemesBtn">
+                        🎨 Gérer les Thèmes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Barre d'outils (filtres, recherche) -->
+            <div class="tasks-toolbar">
+                <div class="toolbar-row">
+                    <div class="search-box">
+                        <input type="text" id="searchTasks" placeholder="🔍 Rechercher des tâches...">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Statut:</label>
+                        <select id="filterStatus">
+                            <option value="">Tous</option>
+                            <option value="todo">À faire</option>
+                            <option value="in_progress">En cours</option>
+                            <option value="completed">Terminé</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Priorité:</label>
+                        <select id="filterPriority">
+                            <option value="">Toutes</option>
+                            <option value="urgent">Urgente</option>
+                            <option value="high">Haute</option>
+                            <option value="normal">Normale</option>
+                            <option value="low">Basse</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Thème:</label>
+                        <select id="filterTheme">
+                            <option value="">Tous les thèmes</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="clearFiltersBtn">🗑️ Effacer</button>
+                </div>
+            </div>
+
+            <!-- Vue Todo List -->
+            <div id="todolistView" class="view-section active">
+                <div class="todo-list" id="tasksList">
+                    <!-- Les tâches seront ajoutées ici dynamiquement -->
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <h3>Aucune tâche trouvée</h3>
+                        <p>Commencez par créer votre première tâche !</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vue Planning -->
+            <div id="planningView" class="view-section">
+                <div class="planning-view">
+                    <div class="planning-sidebar">
+                        <h3>📅 Navigation</h3>
+                        <div id="planningControls">
+                            <!-- Contrôles de navigation du planning -->
+                        </div>
+                    </div>
+                    
+                    <div class="planning-calendar" id="planningCalendar">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📅</div>
+                            <h3>Vue Planning</h3>
+                            <p>Visualisez vos tâches par dates d'échéance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Singularity - Gestion des Tâches</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="./js/config.js"></script>
+    <script type="module" src="./js/auth.js"></script>
+    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./js/tasks.js"></script>
+    <script type="module" src="./js/modals.js"></script>
+    
+    <!-- Scripts de développement (à retirer en production) -->
+    <script src="./demo-tasks-data.js"></script>
+    <script src="./test-tasks-module.js"></script>
+</body>
+</html>

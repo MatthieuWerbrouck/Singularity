@@ -203,11 +203,20 @@ main {
     box-shadow: var(--shadow);
     border: 1px solid var(--border);
     transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
 }
 
 .dashboard-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
+}
+
+.dashboard-card.clickable {
+    cursor: pointer;
+}
+
+.dashboard-card.clickable:hover {
+    border-color: var(--primary-color);
 }
 
 .dashboard-card h3 {
@@ -218,6 +227,16 @@ main {
 .dashboard-card p {
     color: var(--text-secondary);
     font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.card-action {
+    color: var(--primary-color);
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 /* Footer */
