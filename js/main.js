@@ -151,8 +151,14 @@ function setupAuthForms() {
 
         try {
             loginForm.classList.add('loading');
-            await authManager.signIn(email, password);
-            showMessage('Connexion réussie !', 'success');
+            const result = await authManager.signIn(email, password);
+            
+            // Message spécial pour l'admin
+            if (result && result.user && result.user.user_metadata?.isSpecialAdmin) {
+                showToast('👑 Connexion Administrateur réussie !', 'success', 'Accès Admin');
+            } else {
+                showMessage('Connexion réussie !', 'success');
+            }
         } catch (error) {
             showMessage(error.message || 'Erreur de connexion', 'error');
         } finally {

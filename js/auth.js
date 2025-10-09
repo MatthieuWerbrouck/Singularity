@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
-import { SUPABASE_CONFIG } from './config.js';
+import { SUPABASE_CONFIG, ADMIN_ACCOUNT } from './config.js';
 
 // Client Supabase
 let supabase = null;
@@ -56,6 +56,29 @@ export class AuthManager {
     }
 
     async signIn(email, password) {
+        // Vérifier d'abord si c'est le compte admin spécial
+        if (email === ADMIN_ACCOUNT.username && password === ADMIN_ACCOUNT.password) {
+            // Simuler un utilisateur connecté pour le compte admin spécial
+            this.user = {
+                id: 'admin-special',
+                email: ADMIN_ACCOUNT.profile.email,
+                user_metadata: {
+                    name: ADMIN_ACCOUNT.profile.name,
+                    isSpecialAdmin: true
+                }
+            };
+            
+            this.updateUI();
+            
+            return {
+                user: this.user,
+                session: {
+                    user: this.user,
+                    access_token: 'admin-special-token'
+                }
+            };
+        }
+
         if (!supabase) {
             throw new Error('Supabase non configuré');
         }
@@ -85,6 +108,13 @@ export class AuthManager {
     }
 
     async signOut() {
+        // Gérer la déconnexion du compte admin spécial
+        if (this.user && this.user.user_metadata?.isSpecialAdmin) {
+            this.user = null;
+            this.updateUI();
+            return { success: true, message: 'Déconnexion administrateur réussie' };
+        }
+
         if (!supabase) {
             this.user = null;
             this.updateUI();
@@ -148,6 +178,24 @@ export class AuthManager {
 
     // Charger le profil complet avec rôles et permissions
     async getUserProfile() {
+        // Retourner le profil admin spécial si applicable
+        if (this.user && this.user.user_metadata?.isSpecialAdmin) {
+            return {
+                id: this.user.id,
+                email: this.user.email,
+                name: this.user.user_metadata.name,
+                is_super_admin: true,
+                roles: {
+                    id: 'admin-special',
+                    name: 'admin',
+                    display_name: 'Administrateur Spécial',
+                    level: 100,
+                    color: '#dc2626',
+                    icon: '👑'
+                }
+            };
+        }
+
         if (!supabase || !this.user) {
             return null;
         }
@@ -181,6 +229,11 @@ export class AuthManager {
 
     // Vérifier si l'utilisateur a accès à l'administration
     async hasAdminAccess() {
+        // Vérifier d'abord si c'est le compte admin spécial
+        if (this.user && this.user.user_metadata?.isSpecialAdmin) {
+            return true;
+        }
+
         const profile = await this.getUserProfile();
         
         if (!profile) {

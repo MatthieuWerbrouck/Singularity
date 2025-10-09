@@ -12,6 +12,18 @@ export const APP_CONFIG = {
     environment: 'development' // 'development' | 'production'
 };
 
+// Configuration du compte administrateur spécial
+export const ADMIN_ACCOUNT = {
+    username: 'admin',
+    password: 'admin',
+    profile: {
+        email: 'admin@singularity.local',
+        name: 'Administrateur',
+        role: 'admin',
+        permissions: ['all']
+    }
+};
+
 // URLs et endpoints
 export const API_ENDPOINTS = {
     // Ajoutez ici vos endpoints d'API personnalisés si nécessaire
