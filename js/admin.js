@@ -118,23 +118,26 @@ class AdminManager {
 
     async loadUsers() {
         try {
-            const { data, error } = await this.supabase
+            // Méthode alternative pour éviter l'erreur 500 avec les jointures
+            const { data: profiles, error } = await this.supabase
                 .from('profiles')
-                .select(`
-                    id,
-                    email,
-                    full_name,
-                    status,
-                    is_super_admin,
-                    created_at,
-                    roles(id, name, display_name, color, icon, level)
-                `)
+                .select('id, email, full_name, status, is_super_admin, created_at, role_id')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            this.users = data || [];
-            console.log('Utilisateurs chargés:', this.users.length, this.users);
+            // Charger tous les rôles séparément
+            const { data: roles } = await this.supabase
+                .from('roles')
+                .select('id, name, display_name, color, icon, level');
+
+            // Combiner manuellement les données
+            this.users = profiles.map(profile => ({
+                ...profile,
+                roles: profile.role_id ? roles?.find(role => role.id === profile.role_id) : null
+            }));
+
+            console.log('Utilisateurs chargés (méthode alternative):', this.users.length, this.users);
             
             // Rafraîchir l'affichage si l'interface est déjà créée
             this.refreshUsersDisplay();

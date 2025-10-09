@@ -153,28 +153,39 @@ export class AuthManager {
         }
 
         try {
+            // Méthode alternative pour éviter l'erreur 500 avec les jointures
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select(`
-                    *,
-                    roles (
-                        id,
-                        name,
-                        display_name,
-                        level,
-                        color,
-                        icon
-                    )
-                `)
+                .select('*')
                 .eq('id', this.user.id)
                 .single();
 
             if (error) {
+                console.warn('Erreur chargement profil:', error);
                 return null;
             }
 
-            return profile;
+            // Charger le rôle séparément si nécessaire
+            let roleData = null;
+            if (profile.role_id) {
+                const { data: role, error: roleError } = await supabase
+                    .from('roles')
+                    .select('id, name, display_name, level, color, icon')
+                    .eq('id', profile.role_id)
+                    .single();
+
+                if (!roleError) {
+                    roleData = role;
+                }
+            }
+
+            // Combiner les données
+            return {
+                ...profile,
+                roles: roleData
+            };
         } catch (error) {
+            console.warn('Exception getUserProfile:', error);
             return null;
         }
     }
