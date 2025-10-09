@@ -17,15 +17,7 @@ export const API_ENDPOINTS = {
     // Ajoutez ici vos endpoints d'API personnalisés si nécessaire
 };
 
-// Configuration Tuya Smart
-// ⚠️ IMPORTANT: Credentials pour l'API Tuya IoT
-export const TUYA_CONFIG = {
-    accessId: 'gmxydg3hn4fgxkkxgkjw',
-    accessSecret: 'afd2800334ae4b3cad9314b0d81d5726',
-    dataCenter: 'us', // Data center par défaut
-    baseUrl: 'https://openapi.tuyaus.com', // US data center
-    version: 'v1.0'
-};
+
 
 // Configuration des modules de l'application
 export const MODULES = {
@@ -41,10 +33,7 @@ export const MODULES = {
         enabled: true,
         name: 'Suivi des Objectifs'
     },
-    lights: {
-        enabled: true,
-        name: 'Lumières Connectées'
-    },
+
     health: {
         enabled: false, // À activer plus tard
         name: 'Suivi Santé'
